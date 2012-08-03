@@ -1,0 +1,15 @@
+= Some protocol notes =
+ out 16 bytes: 0x23 x a0 a1: write chip reg x with a0.a1 (x is always even)
+     x = 0x32: always 0xff 0xff (?)
+     x = 0x3a: set chip size to (a1+1) * 0x10000
+     x = 0x38: various values (?)
+     x = 0x40: sometimes: a0 = lowbyte of device id (for 16bit did?), a1 = device id (for 8bit did) ?
+     x = 0x42: a0 = vendor id, a1 = highbyte of device id for 16bit did or device id for 8bit did (?)
+     x = 0x44: always 0x03 0x18 (?)
+     x = 0x46: a0 = various, a1 = always 0x30? (?)
+     x = 0x48: a0 = various, a1 = always 0xc0? (?)
+
+ out 16 bytes: 0x11 x a0 a1: write reg x with a0.a1
+     x = 2: various (?)
+     x = 3: various (?)
+     x = 4: various (?)

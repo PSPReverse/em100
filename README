@@ -1,0 +1,10 @@
+A simple utility to control a Dediprog EM100 from Linux.
+
+Usage:
+-c CHIP|--set CHIP: select CHIP emulation
+-d[ownload] FILE:   upload FILE into em100
+-r|--start:         em100 shall run
+-s|--stop:          em100 shall stop
+-v|--verify:        verify EM100 content matches the file
+-h|--help:          this help text
+
