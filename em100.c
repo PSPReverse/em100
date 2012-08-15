@@ -344,7 +344,13 @@ int main(int argc, char **argv)
 		} while ((++chip)->name);
 
 		if (chip->name == NULL) {
-			printf("could not find emulation for '%s'\n", desiredchip);
+			printf("Supported chips:\n");
+			chip = chips;
+			do {
+				printf("%s ", chip->name);
+			} while ((++chip)->name);
+			printf("\n\nCould not find emulation for '%s'.\n", desiredchip);
+
 			return 1;
 		}
 	}
