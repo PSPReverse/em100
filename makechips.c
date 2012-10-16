@@ -24,83 +24,176 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#include <endian.h>
 
-/* Config file format v1.1:
- * All files 1.1 are 176 bytes
- * and data is stored little endian
+#define DEDIPROG_CFG_PRO_SIZE 176
+#define DEDIPROG_CFG_MAGIC 0x67666344
+#define INIT_SEQUENCE_REIGSTER_OFFSET_0 0x2300
+#define INIT_SEQUENCE_REIGSTER_OFFSET_1 0x1100
+
+/* Init sequence and file format:
  *
- *  0: Magic "Dcfg"
- *  4: Version 01 00 01 00 --> 1.1
- *     non-pro config files:
- *             00 00 01 00 --> 1.0 ( 2 byte commands)
- *  8: offset of init sequence (0x80)
- * 12: size of chip
- * 16: offset of vendor name (0x20)
- * 20: offset of device name (0x30)
- * 24: offset ? (0x40)
- *
- * offsets below are just examples and need
- * to be determined at run time:
- * 0x20: vendor name
- * 0x30: device name
- * 0x80: init sequence x23
- *       3 byte commands?
- *       4 bytes cmd[3] cmd[2] cmd[1] 00
- *               ....
- *               ff ff ff ff end of list
- * 0x94: init sequence x11
- *       4 bytes cmd[3] cmd[2] cmd[1] 00
- *               ....
- *               end of file
+ * All v1.1 dediprog configuration files are 176 bytes and all values are
+ * encoded as little endian format.
+
+ * At offset init_offset the init sequence consists of init entries that are
+ * sent to endpoint 1.  There are 2 sets of entries separated by a 32-bit
+ * terminator of 0xffffffff. Each entry consists of a value and register offset.
+ * The first set of entries have a base register address of 0x2300 while the
+ * the second set of entries have a base register address of 0x1100. Each entry
+ * is sent to the device as <register> <value>, however the data is sent in
+ * big endian format. Additionally, each entry is sent as a 16-byte transfer
+ * with the remaining bytes all 0's.
  */
 
-unsigned char cfg[176];
+
+struct dediprog_cfg_hdr {
+	uint32_t magic;
+	uint16_t ver_min;
+	uint16_t ver_maj;
+	uint32_t init_offset;
+	uint32_t chip_size;
+	uint32_t vendor_name_offset;
+	uint32_t chip_name_offset;
+	uint32_t unknown_offset[2];
+} __attribute__((packed));
+
+struct dediprog_cfg_pro {
+	struct dediprog_cfg_hdr hdr;
+	uint8_t payload[DEDIPROG_CFG_PRO_SIZE-sizeof(struct dediprog_cfg_hdr)];
+} __attribute__((packed));
+
+
+struct dediprog_cfg_init_entry {
+	uint16_t value;
+	uint16_t reg;
+} __attribute__((packed));
+
+unsigned char cfg_buffer[DEDIPROG_CFG_PRO_SIZE];
+
+static int parse_and_output_config(struct dediprog_cfg_pro *cfg)
+{
+	struct dediprog_cfg_init_entry *entry, *end;
+	struct dediprog_cfg_hdr *hdr;
+	const char *vendor, *chip_name;
+	uint16_t reg_offset;
+
+	hdr = &cfg->hdr;
+
+	/* The magic number is actually string, but it can be converted to
+	 * a host ordered 32-bit number. */
+	hdr->magic= le32toh(hdr->magic);
+
+	if (hdr->magic != DEDIPROG_CFG_MAGIC) {
+		fprintf(stderr, "Invalid magic number: 0x%x\n", hdr->magic);
+		return -1;
+	}
+
+	/* Convert all header values from little endian to host byte order. */
+	hdr->ver_min = le16toh(hdr->ver_min);
+	hdr->ver_maj = le16toh(hdr->ver_maj);
+	hdr->init_offset = le32toh(hdr->init_offset);
+	hdr->chip_size = le32toh(hdr->chip_size);
+	hdr->vendor_name_offset = le32toh(hdr->vendor_name_offset);
+	hdr->chip_name_offset = le32toh(hdr->chip_name_offset);
+
+	if (hdr->ver_maj != 1 && hdr->ver_min != 1) {
+		fprintf(stderr, "Invalid version number: %d.%d\n", hdr->ver_maj,
+		        hdr->ver_min);
+		return -1;
+	}
+
+	/* Adjust the offsets to be into the payload of the config file. */
+	hdr->init_offset -= sizeof(*hdr);
+	hdr->vendor_name_offset -= sizeof(*hdr);
+	hdr->chip_name_offset -= sizeof(*hdr);
+
+	vendor = (void *)&cfg->payload[hdr->vendor_name_offset];
+	chip_name = (void *)&cfg->payload[hdr->chip_name_offset];
+
+
+	printf("\t{ /* %s %s (%d kB) */\n",
+	       vendor, chip_name, hdr->chip_size/1024);
+	printf("\t\t.name = \"%s\",\n", chip_name);
+	printf("\t\t.size = 0x%x,\n", hdr->chip_size);
+	printf("\t\t.init = {\n");
+
+	entry = (void *)&cfg->payload[hdr->init_offset];
+	end = (void *)&cfg[1]; /* 1 past the last entry */
+
+	reg_offset = INIT_SEQUENCE_REIGSTER_OFFSET_0;
+
+	for (; entry != end; entry++) {
+		uint8_t *reg, *value;
+
+		/* Convert from little endian to host format. */
+		entry->value = le16toh(entry->value);
+		entry->reg = le16toh(entry->reg);
+
+		if (entry->value == 0xffff && entry->reg == 0xffff) {
+			reg_offset = INIT_SEQUENCE_REIGSTER_OFFSET_1;
+			continue;
+		}
+
+		entry->reg += reg_offset;
+
+		/* Convert from host to big endian format. */
+		entry->value = htobe16(entry->value);
+		entry->reg = htobe16(entry->reg);
+
+		value = (void *)&entry->value;
+		reg = (void *)&entry->reg;
+
+		printf("\t\t\t{ 0x%02x, 0x%02x, 0x%02x, 0x%02x },\n",
+		       reg[0], reg[1], value[0], value[1]);
+	}
+
+	printf("\t\t},\n");
+	printf("\t},\n");
+
+	return 0;
+}
 
 int main(int argc, char *argv[])
 {
 	int i;
 	FILE *f;
+	struct dediprog_cfg_pro *cfg;
+	const char *filename;
 
 	printf("\n#ifndef EM100PRO_CHIPS_H\n");
 	printf("#define EM100PRO_CHIPS_H\n\n");
-	printf("typedef struct {\n\tconst char *name;\n\t");
-	printf("unsigned int size;\n\tconst char x23[16];\n\t");
-	printf("const char x11[6];\n} chipdesc;\n\n");
+	printf("#include <stdint.h>\n");
+	printf("#define NUM_INIT_ENTRIES 11\n");
+	printf("#define BYTES_PER_INIT_ENTRY 4\n");
+	printf("typedef struct {\n");
+	printf("\tconst char *name;\n");
+	printf("\tunsigned int size;\n");
+	printf("\tuint8_t init[NUM_INIT_ENTRIES][BYTES_PER_INIT_ENTRY];\n");
+	printf("} chipdesc;\n\n");
+
 	printf("const chipdesc chips[] = {\n");
 
 	for (i=1; i<argc; i++) {
-		f = fopen(argv[i], "r");
+		filename = argv[i];
+		f = fopen(filename, "r");
 		if (!f) {
-			perror(argv[i]);
+			perror(filename);
 			exit(1);
 		}
-		size_t fread(void *ptr, size_t size, size_t nmemb, FILE
-				*stream);
-		if (fread(cfg, 176, 1, f) != 1) {
+
+		if (fread(cfg_buffer, sizeof(cfg_buffer), 1, f) != 1) {
 			perror(argv[i]);
 			fclose(f);
 			exit(1);
 		}
 
-		//printf("	/* %s */\n", argv[i]);
-		printf("\t{ /* %s %s (%d kB) */\n", &cfg[0x20], 
-				&cfg[0x30], *(uint32_t *)&cfg[0xc] / 1024);
-		printf("\t\t.name = \"%s\",\n", &cfg[0x30]);
-		printf("\t\t.size = 0x%x,\n", *(uint32_t *)&cfg[0xc]);
-		printf("\t\t.x23 = {\n");
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0x81], cfg[0x80]);
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0x85], cfg[0x84]);
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0x89], cfg[0x88]);
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0x8d], cfg[0x8c]);
+		cfg = (typeof(cfg))&cfg_buffer[0];
 
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0x91], cfg[0x90]);
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0x95], cfg[0x94]);
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0x99], cfg[0x98]);
-		printf("\t\t\t0x%02x, 0x%02x},\n", cfg[0x9d], cfg[0x9c]);
-		printf("\t\t.x11 = {\n");
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0xa5], cfg[0xa4]);
-		printf("\t\t\t0x%02x, 0x%02x,\n", cfg[0xa9], cfg[0xa8]);
-		printf("\t\t\t0x%02x, 0x%02x}},\n", cfg[0xad], cfg[0xac]);
+		if (parse_and_output_config(cfg)) {
+			fprintf(stderr, "Error parsing %s\n", filename);
+		}
+
 
 		fclose(f);
 	}

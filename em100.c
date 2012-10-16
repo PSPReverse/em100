@@ -113,67 +113,14 @@ int set_chip_type(libusb_device_handle *dev, const chipdesc *desc)
          * These are then converted in a boolean success value
          */
 	int result = 0;
-	int i = 0;
+	int i;
+
 	memset(cmd, 0, 16);
-	cmd[0] = 0x23;
 
-	cmd[1] = 0x32;
-	cmd[2] = desc->x23[i++];
-	cmd[3] = desc->x23[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x3a;
-	cmd[2] = desc->x23[i++];
-	cmd[3] = desc->x23[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x38;
-	cmd[2] = desc->x23[i++];
-	cmd[3] = desc->x23[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x40;
-	cmd[2] = desc->x23[i++];
-	cmd[3] = desc->x23[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x42;
-	cmd[2] = desc->x23[i++];
-	cmd[3] = desc->x23[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x44;
-	cmd[2] = desc->x23[i++];
-	cmd[3] = desc->x23[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x46;
-	cmd[2] = desc->x23[i++];
-	cmd[3] = desc->x23[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x48;
-	cmd[2] = desc->x23[i++];
-	cmd[3] = desc->x23[i++];
-	result += !send_cmd(dev, cmd);
-
-	i = 0;
-	cmd[0] = 0x11;
-
-	cmd[1] = 0x02;
-	cmd[2] = desc->x11[i++];
-	cmd[3] = desc->x11[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x03;
-	cmd[2] = desc->x11[i++];
-	cmd[3] = desc->x11[i++];
-	result += !send_cmd(dev, cmd);
-
-	cmd[1] = 0x04;
-	cmd[2] = desc->x11[i++];
-	cmd[3] = desc->x11[i++];
-	result += !send_cmd(dev, cmd);
+	for (i = 0; i < NUM_INIT_ENTRIES; i++) {
+		memcpy(&cmd[0], &desc->init[i][0], BYTES_PER_INIT_ENTRY);
+		result += !send_cmd(dev, cmd);
+	}
 
 	return !result;
 }
@@ -323,7 +270,7 @@ int main(int argc, char **argv)
 			do_start = 1;
 			break;
 		case 's':
-			do_stop = 0;
+			do_stop = 1;
 			break;
 		case 'v':
 			verify = 1;
