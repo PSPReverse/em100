@@ -29,6 +29,18 @@ struct em100 {
 	libusb_context *ctx;
 };
 
+struct em100_hold_pin_states {
+	const char *description;
+	int value;
+};
+
+static struct em100_hold_pin_states hold_pin_states[] = {
+	{ "FLOAT", 0x2 },
+	{ "LOW", 0x0 },
+	{ "INPUT", 0x3 },
+	{ NULL, 0x0 },
+};
+
 int check_status(libusb_device_handle *dev);
 int em100_attach(struct em100 *em100)
 {
@@ -187,6 +199,88 @@ int get_version(libusb_device_handle *dev, int *mcu, int *fpga)
 	return 0;
 }
 
+int set_hold_pin_state(libusb_device_handle *dev, const char *state)
+{
+	unsigned char cmd[16];
+	unsigned char data[512];
+	int len;
+	struct em100_hold_pin_states *s = &hold_pin_states[0];
+
+	while (s->description != NULL) {
+		if (!strcmp(s->description, state))
+			break;
+		s++;
+	}
+	if (s->description == NULL) {
+		printf("Invalid hold pin state: %s\n", state);
+		return 0;
+	}
+
+	/* Read and acknowledge hold pin state setting bit 2 of pin state respone. */
+	memset(cmd, 0, 16);
+	cmd[0] = 0x22;
+	cmd[1] = 0x2a;
+
+	if (!send_cmd(dev, cmd)) {
+		return 0;
+	}
+	len = get_response(dev, data, sizeof(data));
+	if (len != 3 || data[0] != 0x2 || data[1] != 0x0) {
+		printf("Couldn't get hold pin state.\n");
+		return 0;
+	}
+
+	memset(cmd, 0, 16);
+	cmd[0] = 0x23;
+	cmd[1] = 0x2a;
+	cmd[2] = 0x00;
+	cmd[3] = (1 << 2) | data[2];
+	if (!send_cmd(dev, cmd)) {
+		return 0;
+	}
+
+	memset(cmd, 0, 16);
+	cmd[0] = 0x22;
+	cmd[1] = 0x2a;
+	if (!send_cmd(dev, cmd)) {
+		return 0;
+	}
+	len = get_response(dev, data, sizeof(data));
+	if (len != 3 || data[0] != 0x2 || data[1] != 0x0) {
+		printf("Couldn't get hold pin state.\n");
+		return 0;
+	}
+
+	/* Now set desired pin state. */
+	memset(cmd, 0, 16);
+	cmd[0] = 0x23;
+	cmd[1] = 0x2a;
+	cmd[2] = 0x00;
+	cmd[3] = s->value;
+
+	/* Send the pin state. */
+	if (!send_cmd(dev, cmd)) {
+		return 0;
+	}
+
+	/* Read the pin state. */
+	memset(cmd, 0, 16);
+	cmd[0] = 0x22;
+	cmd[1] = 0x2a;
+	if (!send_cmd(dev, cmd)) {
+		return 0;
+	}
+	len = get_response(dev, data, sizeof(data));
+
+	if (len != 3 || data[0] != 0x2 || data[1] != 0x0 || data[2] != s->value) {
+		printf("Invalid pin state response: len(%d) 0x%02x 0x%02x 0x%02x\n",
+		       len, data[0], data[1], data[2]);
+		return 0;
+	}
+
+	return 1;
+}
+
 int read_data(libusb_device_handle *dev, void *data, int length)
 {
 	int actual;
@@ -233,6 +327,7 @@ static const struct option longopts[] = {
 	{"start", 0, 0, 'r'},
 	{"stop", 0, 0, 's'},
 	{"verify", 0, 0, 'v'},
+	{"holdpin", 1, 0, 'p'},
 	{"help", 0, 0, 'h'},
 	{NULL, 0, 0, 0}
 };
@@ -245,6 +340,7 @@ void usage(void)
 		"-r|--start:         em100 shall run\n"
 		"-s|--stop:          em100 shall stop\n"
 		"-v|--verify:        verify EM100 content matches the file\n"
+		"-p|--holdpin [LOW|FLOAT|INPUT]:       set the hold pin state\n"
 		"-h|--help:          this help text\n");
 }
 
@@ -254,9 +350,10 @@ int main(int argc, char **argv)
 	int opt, idx;
 	const char *desiredchip = NULL;
 	const char *filename = NULL;
+	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
         int verify = 0;
-	while ((opt = getopt_long(argc, argv, "c:d:rsvh",
+	while ((opt = getopt_long(argc, argv, "c:d:p:rsvh",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -265,6 +362,9 @@ int main(int argc, char **argv)
 		case 'd':
 			filename = optarg;
 			/* TODO: check that file exists */
+			break;
+		case 'p':
+			holdpin = optarg;
 			break;
 		case 'r':
 			do_start = 1;
@@ -322,6 +422,13 @@ int main(int argc, char **argv)
 	if (desiredchip) {
 		if (!set_chip_type(em100.dev, chip)) {
 			printf("Failed configuring chip type.\n");
+			return 0;
+		}
+	}
+
+	if (holdpin) {
+		if (!set_hold_pin_state(em100.dev, holdpin)) {
+			printf("Failed configuring hold pin state.\n");
 			return 0;
 		}
 	}
