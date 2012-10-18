@@ -34,15 +34,44 @@ struct em100_hold_pin_states {
 	int value;
 };
 
-static struct em100_hold_pin_states hold_pin_states[] = {
+static const struct em100_hold_pin_states hold_pin_states[] = {
 	{ "FLOAT", 0x2 },
 	{ "LOW", 0x0 },
 	{ "INPUT", 0x3 },
 	{ NULL, 0x0 },
 };
 
-int check_status(libusb_device_handle *dev);
-int em100_attach(struct em100 *em100)
+static int send_cmd(libusb_device_handle *dev, void *data)
+{
+	int actual;
+	int length = 16; /* haven't seen any other length yet */
+	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT, data, length, &actual, 0);
+	return (actual == length);
+}
+
+static int get_response(libusb_device_handle *dev, void *data, int length)
+{
+	int actual;
+	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN, data, length, &actual, 0);
+	return actual;
+}
+
+static int check_status(libusb_device_handle *dev)
+{
+	unsigned char cmd[16];
+	unsigned char data[512];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x30; /* status */
+	if (!send_cmd(dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(dev, data, 512);
+	if ((len == 3) && (data[0] == 0x20) && (data[1] == 0x20) && (data[2] == 0x15))
+		return 1;
+	return 0;
+}
+
+static int em100_attach(struct em100 *em100)
 {
 	libusb_device **devs;
 	libusb_device_handle *dev;
@@ -90,7 +119,7 @@ int em100_attach(struct em100 *em100)
 	return 1;
 }
 
-int em100_detach(struct em100 *em100)
+static int em100_detach(struct em100 *em100)
 {
 	if (libusb_release_interface(em100->dev, 0) != 0) {
 		printf("releasing interface failed.\n");
@@ -103,22 +132,7 @@ int em100_detach(struct em100 *em100)
 	return 0;
 }
 
-int send_cmd(libusb_device_handle *dev, void *data)
-{
-	int actual;
-	int length = 16; /* haven't seen any other length yet */
-	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT, data, length, &actual, 0);
-	return (actual == length);
-}
-
-int get_response(libusb_device_handle *dev, void *data, int length)
-{
-	int actual;
-	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN, data, length, &actual, 0);
-	return actual;
-}
-
-int set_chip_type(libusb_device_handle *dev, const chipdesc *desc)
+static int set_chip_type(libusb_device_handle *dev, const chipdesc *desc)
 {
 	unsigned char cmd[16];
 	/* result counts unsuccessful send_cmd()s.
@@ -137,7 +151,7 @@ int set_chip_type(libusb_device_handle *dev, const chipdesc *desc)
 	return !result;
 }
 
-int set_state(libusb_device_handle *dev, int run)
+static int set_state(libusb_device_handle *dev, int run)
 {
 	unsigned char cmd[16];
 	memset(cmd, 0, 16);
@@ -147,7 +161,7 @@ int set_state(libusb_device_handle *dev, int run)
 	return send_cmd(dev, cmd);
 }
 
-int get_state(libusb_device_handle *dev)
+static int get_state(libusb_device_handle *dev)
 {
 	unsigned char cmd[16];
 	unsigned char data[3];
@@ -166,22 +180,7 @@ int get_state(libusb_device_handle *dev)
 	return -3; /* error */
 }
 
-int check_status(libusb_device_handle *dev)
-{
-	unsigned char cmd[16];
-	unsigned char data[512];
-	memset(cmd, 0, 16);
-	cmd[0] = 0x30; /* status */
-	if (!send_cmd(dev, cmd)) {
-		return 0;
-	}
-	int len = get_response(dev, data, 512);
-	if ((len == 3) && (data[0] == 0x20) && (data[1] == 0x20) && (data[2] == 0x15))
-		return 1;
-	return 0;
-}
-
-int get_version(libusb_device_handle *dev, int *mcu, int *fpga)
+static int get_version(libusb_device_handle *dev, int *mcu, int *fpga)
 {
 	unsigned char cmd[16];
 	unsigned char data[512];
@@ -199,12 +198,12 @@ int get_version(libusb_device_handle *dev, int *mcu, int *fpga)
 	return 0;
 }
 
-int set_hold_pin_state(libusb_device_handle *dev, const char *state)
+static int set_hold_pin_state(libusb_device_handle *dev, const char *state)
 {
 	unsigned char cmd[16];
 	unsigned char data[512];
 	int len;
-	struct em100_hold_pin_states *s = &hold_pin_states[0];
+	const struct em100_hold_pin_states *s = &hold_pin_states[0];
 
 	while (s->description != NULL) {
 		if (!strcmp(s->description, state))
@@ -281,7 +280,7 @@ int set_hold_pin_state(libusb_device_handle *dev, const char *state)
 	return 1;
 }
 
-int read_data(libusb_device_handle *dev, void *data, int length)
+static int read_data(libusb_device_handle *dev, void *data, int length)
 {
 	int actual;
 	unsigned char cmd[16];
@@ -301,7 +300,7 @@ int read_data(libusb_device_handle *dev, void *data, int length)
 	return (actual == length);
 }
 
-int send_data(libusb_device_handle *dev, void *data, int length)
+static int send_data(libusb_device_handle *dev, void *data, int length)
 {
 	int actual;
 	unsigned char cmd[16];
@@ -332,7 +331,7 @@ static const struct option longopts[] = {
 	{NULL, 0, 0, 0}
 };
 
-void usage(void)
+static void usage(void)
 {
 	printf("em100: em100 client utility\n\n"
 		"-c CHIP|--set CHIP: select CHIP emulation\n"
