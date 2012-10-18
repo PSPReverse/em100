@@ -26,10 +26,6 @@ if ! which 7z > /dev/null; then
   echo "Install 7z to run this script."
   exit 1
 fi
-if ! which cabextract > /dev/null; then
-  echo "Install cabextract to run this script."
-  exit 1
-fi
 
 FILE=$(basename $URL)
 TEMP=$(mktemp -d)
@@ -40,8 +36,7 @@ echo Downloading...
 curl -s $URL -o $FILE || exit
 echo Unpacking...
 7z x $FILE ${FILE%.zip}.msi > /dev/null
-7z x ${FILE%.zip}.msi WixDediEM100Setup.cab > /dev/null
-cabextract -F PRO_* WixDediEM100Setup.cab > /dev/null
+7z x ${FILE%.zip}.msi PRO_*
 echo  Copying...
 mkdir -p $WD/configs
 for i in PRO_*; do
