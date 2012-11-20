@@ -15,14 +15,17 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-CFLAGS=-O2 -Wall -g
+CFLAGS?=-O2 -g
+CFLAGS+=-Wall
 CC?=gcc
+PKG_CONFIG?=pkg-config
 
 em100: em100.c em100pro_chips.h
-	$(CC) $(CFLAGS) -o $@ $< $(shell pkg-config --cflags --libs libusb-1.0)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $< \
+		$(shell $(PKG_CONFIG) --cflags --libs libusb-1.0)
 
 makechips: makechips.c
-	$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $<
 
 em100pro_chips.h: makechips
 	./makechips.sh
