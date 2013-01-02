@@ -24,7 +24,23 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define bswap_16(x) OSSwapInt16(x)
+#define bswap_32(x) OSSwapInt32(x)
+#include <architecture/byte_order.h>
+  #if BYTE_ORDER == LITTLE_ENDIAN
+    #define le32toh(x) (x)
+    #define le16toh(x) (x)
+    #define htobe16(x) bswap_16(x)
+  #else
+    #define le32toh(x) bswap_32(x)
+    #define le16toh(x) bswap_16(x)
+    #define htobe16(x) (x)
+  #endif
+#else
 #include <endian.h>
+#endif
 
 #define DEDIPROG_CFG_PRO_SIZE 176
 #define DEDIPROG_CFG_MAGIC 0x67666344

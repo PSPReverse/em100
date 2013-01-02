@@ -28,7 +28,7 @@ if ! which 7z > /dev/null; then
 fi
 
 FILE=$(basename $URL)
-TEMP=$(mktemp -d)
+TEMP=$(mktemp -d /tmp/temp.XXXXXX)
 WD=$(pwd)
 
 cd $TEMP
