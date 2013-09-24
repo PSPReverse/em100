@@ -161,25 +161,6 @@ static int set_state(libusb_device_handle *dev, int run)
 	return send_cmd(dev, cmd);
 }
 
-static int get_state(libusb_device_handle *dev)
-{
-	unsigned char cmd[16];
-	unsigned char data[3];
-	memset(cmd, 0, 16);
-	cmd[0] = 0x22;
-	cmd[1] = 0x28;
-	if (!send_cmd(dev, cmd)) {
-		return -1; /* error */
-	}
-	if (!get_response(dev, data, 3)) {
-		return -2; /* error */
-	}
-	if ((data[0] == 0x02) && (data[1] == 0x00)) {
-		return data[2]; /* success */
-	}
-	return -3; /* error */
-}
-
 static int get_version(libusb_device_handle *dev, int *mcu, int *fpga)
 {
 	unsigned char cmd[16];
