@@ -23,13 +23,13 @@ if ! which curl > /dev/null; then
   exit 1;
 fi
 if ! which 7z > /dev/null; then
-  echo "Install 7z to run this script."
+  echo "Install 7z (aka p7zip-full on Ubuntu) to run this script."
   exit 1
 fi
 
 FILE=$(basename $URL)
-TEMP=$(mktemp -d /tmp/temp.XXXXXX)
-WD=$(pwd)
+TEMP=$(mktemp -d /tmp/makech.XXXXXX)
+WD=$(readlink -f $(dirname $0))
 
 cd $TEMP
 if [ -r $WD/$FILE ]; then
@@ -40,8 +40,18 @@ else
   curl -s $URL -o $FILE || exit
 fi
 echo Unpacking configs...
-7z x $FILE ${FILE%.zip}.msi > /dev/null
-7z x ${FILE%.zip}.msi PRO_* > /dev/null
+if ! 7z x $FILE ${FILE%.zip}.msi > /dev/null ; then
+  echo "No msi component found. Is ${URL} a correct url?" >&2
+  echo -n "check http://www.dediprog.com/download?u=42&l=EM100Pro and edit " >&2
+  echo "$0 to use the latest archive URL" >&2
+  rm -rf $TEMP
+  exit 1
+fi
+if ! 7z x ${FILE%.zip}.msi PRO_* > /dev/null ; then
+  echo "No PRO_* components found..."
+  rm -rf $TEMP
+  exit 1
+fi
 echo  Copying configs...
 mkdir -p $WD/configs
 for i in PRO_*; do
