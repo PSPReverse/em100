@@ -16,7 +16,7 @@
 #
 
 CFLAGS?=-O2 -g
-CFLAGS+=-Wall
+CFLAGS+=-Wall -Werror
 CC?=gcc
 PKG_CONFIG?=pkg-config
 
