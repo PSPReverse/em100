@@ -23,7 +23,7 @@ if ! which curl > /dev/null; then
   exit 1;
 fi
 if ! which 7z > /dev/null; then
-  echo "Install 7z (aka p7zip-full on Ubuntu) to run this script."
+  echo "Install 7z (aka p7zip-full on Ubuntu, p7zip-plugins on fedora) to run this script."
   exit 1
 fi
 
