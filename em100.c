@@ -21,6 +21,8 @@
 #include <getopt.h>
 #include <libusb.h>
 
+#define BULK_SEND_TIMEOUT	5000	/* sentinel value */
+
 /* SPI flash chips parameters definition */
 #include "em100pro_chips.h"
 
@@ -45,14 +47,14 @@ static int send_cmd(libusb_device_handle *dev, void *data)
 {
 	int actual;
 	int length = 16; /* haven't seen any other length yet */
-	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT, data, length, &actual, 0);
+	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT, data, length, &actual, BULK_SEND_TIMEOUT);
 	return (actual == length);
 }
 
 static int get_response(libusb_device_handle *dev, void *data, int length)
 {
 	int actual;
-	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN, data, length, &actual, 0);
+	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN, data, length, &actual, BULK_SEND_TIMEOUT);
 	return actual;
 }
 
@@ -276,7 +278,7 @@ static int read_data(libusb_device_handle *dev, void *data, int length)
 		printf("error initiating host-to-em100 transfer.\n");
 		return 0;
 	}
-	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN, data, length, &actual, 0);
+	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN, data, length, &actual, BULK_SEND_TIMEOUT);
 	printf("tried reading %d bytes, got %d\n", length, actual);
 	return (actual == length);
 }
@@ -296,7 +298,7 @@ static int send_data(libusb_device_handle *dev, void *data, int length)
 		printf("error initiating host-to-em100 transfer.\n");
 		return 0;
 	}
-	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT, data, length, &actual, 0);
+	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT, data, length, &actual, BULK_SEND_TIMEOUT);
 	printf("tried sending %d bytes, sent %d\n", length, actual);
 	return (actual == length);
 }
