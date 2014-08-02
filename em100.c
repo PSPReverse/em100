@@ -283,24 +283,48 @@ static int read_data(libusb_device_handle *dev, void *data, int length)
 	return (actual == length);
 }
 
-static int send_data(libusb_device_handle *dev, void *data, int length)
+static int send_data(libusb_device_handle *dev, unsigned char *data, int length)
 {
 	int actual;
+	int transfer_length = 0x200000;
+	int bytes_sent=0;
+	int bytes_left;
+	int bytes_to_send;
 	unsigned char cmd[16];
 	memset(cmd, 0, 16);
 	cmd[0] = 0x40; /* host-to-em100 eeprom data */
-	/* cmd 1-3 might be start address? Hard code 0 for now, haven't seen anything else in the logs */
-	/* when doing cmd 1-3, check if 4-6 are end address or length */
-	cmd[4] = length & 0xff;
-	cmd[5] = (length >> 8) & 0xff;
+	/* cmd 1-4 might be start address? Hard code 0 for now, haven't seen anything else in the logs */
+	/* when doing cmd 1-4, check if 5-7 are end address or length */
+	cmd[5] = (length >> 24) & 0xff;
 	cmd[6] = (length >> 16) & 0xff;
+	cmd[7] = (length >> 8) & 0xff;
+	cmd[8] = length & 0xff;
+
 	if (!send_cmd(dev, cmd)) {
 		printf("error initiating host-to-em100 transfer.\n");
 		return 0;
 	}
-	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT, data, length, &actual, BULK_SEND_TIMEOUT);
-	printf("tried sending %d bytes, sent %d\n", length, actual);
-	return (actual == length);
+
+	while ( bytes_sent < length) {
+		actual = 0;
+
+		bytes_left = length - bytes_sent;
+		bytes_to_send = (bytes_left < transfer_length) ? bytes_left : transfer_length;
+
+		libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT,
+			data + bytes_sent, bytes_to_send, &actual, BULK_SEND_TIMEOUT);
+		bytes_sent += actual;
+		if (actual < bytes_to_send) {
+			printf("Tried sending %d bytes, sent %d\n", bytes_to_send, actual);
+			break;
+		}
+
+		printf("Sent %d bytes of %d\n", bytes_sent, length);
+
+	}
+
+	printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");
+	return (bytes_sent == length);
 }
 
 static const struct option longopts[] = {
@@ -416,7 +440,7 @@ int main(int argc, char **argv)
 	}
 
 	if (filename) {
-		int maxlen = 0x800000; /* largest size, right? */
+		int maxlen = 0x1000000; /* largest size - 16MB */
 		void *data = malloc(maxlen);
 		if (data == NULL) {
 			printf("FATAL: couldn't allocate memory\n");
@@ -440,7 +464,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		send_data(em100.dev, data, length);
+		send_data(em100.dev, (unsigned char *)data, length);
 		if (verify) {
 			int done;
 			void *readback = malloc(length);
