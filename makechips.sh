@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-URL=http://www.dediprog.com/save/78.zip/to/EM100_4.2.18.zip
+URL=http://www.dediprog.com/save/78.zip/to/EM100Pro_4.2.20.zip
 
 if ! which curl > /dev/null; then
   echo "Install curl to run this script."
