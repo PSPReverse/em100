@@ -38,7 +38,7 @@ struct em100_hold_pin_states {
 	int value;
 };
 
-static int get_version(libusb_device_handle *dev, unsigned int *mcu, unsigned int *fpga);
+static int get_version(struct em100 *em100);
 
 static const struct em100_hold_pin_states hold_pin_states[] = {
 	{ "FLOAT", 0x2 },
@@ -123,7 +123,7 @@ static int em100_attach(struct em100 *em100)
 	em100->dev = dev;
 	em100->ctx = ctx;
 
-	if (!get_version(em100->dev, &em100->mcu, &em100->fpga)) {
+	if (!get_version(em100)) {
 		printf("Failed fetching version information.\n");
 		return 0;
 	}
@@ -173,19 +173,26 @@ static int set_state(libusb_device_handle *dev, int run)
 	return send_cmd(dev, cmd);
 }
 
-static int get_version(libusb_device_handle *dev, unsigned int *mcu, unsigned int *fpga)
+/**
+ * get_version: fetch firmware version information
+ * @param em100: initialized em100 device structure
+ *
+ * out(16 bytes): 0x10 0 .. 0
+ * in(len + 4 bytes): 0x04 fpga_major fpga_minor mcu_major mcu_minor
+ */
+static int get_version(struct em100 *em100)
 {
 	unsigned char cmd[16];
 	unsigned char data[512];
 	memset(cmd, 0, 16);
 	cmd[0] = 0x10; /* version */
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
-	int len = get_response(dev, data, 512);
+	int len = get_response(em100->dev, data, 512);
 	if ((len == 5) && (data[0] == 4)) {
-		*mcu = (data[3]*100) + data[4];
-		*fpga = (data[1]*100) + data[2];
+		em100->mcu = (data[3]*100) + data[4];
+		em100->fpga = (data[1]*100) + data[2];
 		return 1;
 	}
 	return 0;
