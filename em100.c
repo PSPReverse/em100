@@ -41,6 +41,7 @@ struct em100_hold_pin_states {
 
 static int get_version(struct em100 *em100);
 static int get_serialno(struct em100 *em100);
+static int set_hold_pin_state(libusb_device_handle *dev, int pin_state);
 
 static const struct em100_hold_pin_states hold_pin_states[] = {
 	{ "FLOAT", 0x2 },
@@ -231,11 +232,9 @@ static int get_serialno(struct em100 *em100)
 	return 0;
 }
 
-static int set_hold_pin_state(libusb_device_handle *dev, const char *state)
+static int set_hold_pin_state_from_str(libusb_device_handle *dev, const char *state)
 {
-	unsigned char cmd[16];
-	unsigned char data[512];
-	int len;
+	int pin_state;
 	const struct em100_hold_pin_states *s = &hold_pin_states[0];
 
 	while (s->description != NULL) {
@@ -247,7 +246,16 @@ static int set_hold_pin_state(libusb_device_handle *dev, const char *state)
 		printf("Invalid hold pin state: %s\n", state);
 		return 0;
 	}
+	pin_state = s->value;
 
+	return set_hold_pin_state(dev, pin_state);
+}
+
+static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
+{
+	unsigned char cmd[16];
+	unsigned char data[512];
+	int len;
 	/* Read and acknowledge hold pin state setting bit 2 of pin state respone. */
 	memset(cmd, 0, 16);
 	cmd[0] = 0x22;
@@ -288,7 +296,7 @@ static int set_hold_pin_state(libusb_device_handle *dev, const char *state)
 	cmd[0] = 0x23;
 	cmd[1] = 0x2a;
 	cmd[2] = 0x00;
-	cmd[3] = s->value;
+	cmd[3] = pin_state;
 
 	/* Send the pin state. */
 	if (!send_cmd(dev, cmd)) {
@@ -304,7 +312,7 @@ static int set_hold_pin_state(libusb_device_handle *dev, const char *state)
 	}
 	len = get_response(dev, data, sizeof(data));
 
-	if (len != 3 || data[0] != 0x2 || data[1] != 0x0 || data[2] != s->value) {
+	if (len != 3 || data[0] != 0x2 || data[1] != 0x0 || data[2] != pin_state) {
 		printf("Invalid pin state response: len(%d) 0x%02x 0x%02x 0x%02x\n",
 		       len, data[0], data[1], data[2]);
 		return 0;
@@ -479,7 +487,7 @@ int main(int argc, char **argv)
 	}
 
 	if (holdpin) {
-		if (!set_hold_pin_state(em100.dev, holdpin)) {
+		if (!set_hold_pin_state_from_str(em100.dev, holdpin)) {
 			printf("Failed configuring hold pin state.\n");
 			return 0;
 		}
