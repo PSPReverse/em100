@@ -31,6 +31,7 @@ struct em100 {
 	libusb_context *ctx;
 	unsigned int mcu;
 	unsigned int fpga;
+	unsigned int serialno;
 };
 
 struct em100_hold_pin_states {
@@ -39,6 +40,7 @@ struct em100_hold_pin_states {
 };
 
 static int get_version(struct em100 *em100);
+static int get_serialno(struct em100 *em100);
 
 static const struct em100_hold_pin_states hold_pin_states[] = {
 	{ "FLOAT", 0x2 },
@@ -128,6 +130,11 @@ static int em100_attach(struct em100 *em100)
 		return 0;
 	}
 
+	if (!get_serialno(em100)) {
+		printf("Failed fetching serial number.\n");
+		return 0;
+	}
+
 	return 1;
 }
 
@@ -193,6 +200,32 @@ static int get_version(struct em100 *em100)
 	if ((len == 5) && (data[0] == 4)) {
 		em100->mcu = (data[3]*100) + data[4];
 		em100->fpga = (data[1]*100) + data[2];
+		return 1;
+	}
+	return 0;
+}
+
+/**
+ * get_serialno: fetch device's serial number
+ * @param em100: initialized em100 device structure
+ *
+ * out(16 bytes): 0x33 0x1f 0xff 0 .. 0
+ * in(len + 255 bytes): 0xff ?? serno_lo serno_hi ?? ?? .. ??
+ */
+static int get_serialno(struct em100 *em100)
+{
+	unsigned char cmd[16];
+	unsigned char data[256];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x33; /* read configuration block */
+	cmd[1] = 0x1f;
+	cmd[2] = 0xff;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 256);
+	if ((len == 256) && (data[0] == 255)) {
+		em100->serialno = (data[3]<<8) + data[2];
 		return 1;
 	}
 	return 0;
@@ -432,6 +465,7 @@ int main(int argc, char **argv)
 
 	printf("MCU version: %d.%d\n", em100.mcu/100, em100.mcu%100);
 	printf("FPGA version: %d.%d\n", em100.fpga/100, em100.fpga%100);
+	printf("Serial number: DP%06d\n", em100.serialno);
 
 	if (do_stop) {
 		set_state(em100.dev, 0);
