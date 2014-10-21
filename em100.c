@@ -29,12 +29,16 @@
 struct em100 {
 	libusb_device_handle *dev;
 	libusb_context *ctx;
+	unsigned int mcu;
+	unsigned int fpga;
 };
 
 struct em100_hold_pin_states {
 	const char *description;
 	int value;
 };
+
+static int get_version(libusb_device_handle *dev, unsigned int *mcu, unsigned int *fpga);
 
 static const struct em100_hold_pin_states hold_pin_states[] = {
 	{ "FLOAT", 0x2 },
@@ -118,6 +122,12 @@ static int em100_attach(struct em100 *em100)
 
 	em100->dev = dev;
 	em100->ctx = ctx;
+
+	if (!get_version(em100->dev, &em100->mcu, &em100->fpga)) {
+		printf("Failed fetching version information.\n");
+		return 0;
+	}
+
 	return 1;
 }
 
@@ -163,7 +173,7 @@ static int set_state(libusb_device_handle *dev, int run)
 	return send_cmd(dev, cmd);
 }
 
-static int get_version(libusb_device_handle *dev, int *mcu, int *fpga)
+static int get_version(libusb_device_handle *dev, unsigned int *mcu, unsigned int *fpga)
 {
 	unsigned char cmd[16];
 	unsigned char data[512];
@@ -413,13 +423,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	int mcu, fpga;
-	if (!get_version(em100.dev, &mcu, &fpga)) {
-		printf("Failed fetching version information.\n");
-		return 0;
-	}
-
-	printf("MCU version: %d.%d\nFPGA version: %d.%d\n", mcu/100, mcu%100, fpga/100, fpga%100);
+	printf("MCU version: %d.%d\n", em100.mcu/100, em100.mcu%100);
+	printf("FPGA version: %d.%d\n", em100.fpga/100, em100.fpga%100);
 
 	if (do_stop) {
 		set_state(em100.dev, 0);
