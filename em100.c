@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <getopt.h>
 #include <libusb.h>
 
@@ -25,6 +26,12 @@
 
 /* SPI flash chips parameters definition */
 #include "em100pro_chips.h"
+
+volatile int do_exit_flag = 0;
+
+void exit_handler(int sig) {
+	do_exit_flag = 1;
+}
 
 struct em100 {
 	libusb_device_handle *dev;
@@ -78,6 +85,99 @@ static int check_status(libusb_device_handle *dev)
 	if ((len == 3) && (data[0] == 0x20) && (data[1] == 0x20) && (data[2] == 0x15))
 		return 1;
 	return 0;
+}
+
+/**
+ * reset_spi_trace: clear SPI trace buffer
+ * @param dev: libusb device structure
+ *
+ * out(16 bytes): 0xbd 0 .. 0
+ */
+static int reset_spi_trace(libusb_device_handle *dev)
+{
+	unsigned char cmd[16];
+	memset(cmd, 0, 16);
+	cmd[0] = 0xbd; /* reset SPI trace buffer*/
+	if (!send_cmd(dev, cmd)) {
+		return 0;
+	}
+	return 1;
+}
+
+/**
+ * read_spi_trace: fetch SPI trace data
+ * @param dev: libusb device structure
+ * globals: curpos, counter, cmdid
+ *
+ * out(16 bytes): bc 00 00 00 08 00 00 00 00 15 00 00 00 00 00 00
+ * in(8x8192 bytes): 2 bytes (BE) number of records (0..0x3ff),
+ *    then records of 8 bytes each
+ */
+unsigned int counter = 0;
+unsigned char curpos = 0;
+unsigned char cmdid = 0xff; // timestamp, so never a valid command id
+static int read_spi_trace(libusb_device_handle *dev)
+{
+	unsigned char cmd[16];
+	unsigned char data[8192];
+	unsigned int count, i, report;
+	memset(cmd, 0, 16);
+	cmd[0] = 0xbc; /* read SPI trace buffer*/
+	cmd[4] = 0x08; /* cmd1..cmd4 are probably u32BE on how many
+			  reports (8192 bytes each) to fetch */
+	cmd[9] = 0x15; /* no idea */
+	if (!send_cmd(dev, cmd)) {
+		printf("sending trace command failed\n");
+		return 0;
+	}
+	for (report = 0; report < 8; report++) {
+		memset(data, 0, sizeof(data));
+		int len = get_response(dev, data, sizeof(data));
+		if (len != sizeof(data)) {
+			/* FIXME: handle error: device reset? */
+			printf("error, len = %d instead of %ld. bailing out\n\n", len, sizeof(data));
+			return 0;
+		}
+		count = (data[0] << 8) | data[1];
+		for (i = 0; i < count; i++) {
+			unsigned int j;
+			unsigned char cmd = data[2 + i*8];
+			if (cmd == 0xff) {
+				/* timestamp */
+				unsigned long long timestamp = 0;
+				timestamp = data[2 + i*8 + 2];
+				timestamp = (timestamp << 8) | data[2 + i*8 + 3];
+				timestamp = (timestamp << 8) | data[2 + i*8 + 4];
+				timestamp = (timestamp << 8) | data[2 + i*8 + 5];
+				timestamp = (timestamp << 8) | data[2 + i*8 + 6];
+				timestamp = (timestamp << 8) | data[2 + i*8 + 7];
+				printf("\ntimestamp: %lld.%lld", timestamp / 100000000, timestamp % 100000000);
+				continue;
+			}
+#if 0
+			printf("{(%d)", curpos);
+			for (j = 0; j < 8; j++) {
+				printf("%02x ", data[2 + i*8 + j]);
+			}
+			printf("}");
+#endif
+			/* from here, it must be data */
+			if (cmd != cmdid) {
+				/* new command */
+				cmdid = cmd;
+				printf("\nspi command %6d: ", ++counter);
+				curpos = 0;
+			}
+			/* this exploits 8bit wrap around in curpos */
+			unsigned char blocklen = (data[2 + i*8 + 1] - curpos);
+			blocklen /= 8;
+			for (j = 0; j < blocklen; j++) {
+				printf("%02x ", data[2 + i*8 + 2 + j]);
+			}
+			curpos = data[2 + i*8 + 1] + 0x10; // this is because the em100 counts funny
+		}
+	}
+	return 1;
 }
 
 static int em100_attach(struct em100 *em100)
@@ -416,8 +516,8 @@ int main(int argc, char **argv)
 	const char *filename = NULL;
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
-        int verify = 0;
-	while ((opt = getopt_long(argc, argv, "c:d:p:rsvh",
+        int verify = 0, trace = 0;
+	while ((opt = getopt_long(argc, argv, "c:d:p:rsvht",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -438,6 +538,9 @@ int main(int argc, char **argv)
 			break;
 		case 'v':
 			verify = 1;
+			break;
+		case 't':
+			trace = 1;
 			break;
 		case 'h':
 			usage();
@@ -539,6 +642,34 @@ int main(int argc, char **argv)
 
 	if (do_start) {
 		set_state(em100.dev, 1);
+	}
+
+	if (trace) {
+		struct sigaction signal_action;
+
+		if (!set_hold_pin_state(em100.dev, 3)) {
+			printf("failed to set em100 to input\n");
+			return 1;
+		}
+		set_state(em100.dev, 1);
+		reset_spi_trace(em100.dev);
+
+		signal_action.sa_handler = exit_handler;
+		signal_action.sa_flags = 0;
+		sigemptyset(&signal_action.sa_mask);
+		sigaction(SIGINT, &signal_action, NULL);
+
+		while (!do_exit_flag) {
+			read_spi_trace(em100.dev);
+		}
+
+		set_state(em100.dev, 0);
+		reset_spi_trace(em100.dev);
+
+		if (!set_hold_pin_state(em100.dev, 2)) {
+			printf("failed to set em100 to float\n");
+			return 1;
+		}
 	}
 
 	return em100_detach(&em100);
