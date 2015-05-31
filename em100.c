@@ -261,9 +261,11 @@ static int set_chip_type(libusb_device_handle *dev, const chipdesc *desc)
 	int result = 0;
 	int i;
 
+	printf("Sending flash chip configuration\n");
+
 	memset(cmd, 0, 16);
 
-	for (i = 0; i < NUM_INIT_ENTRIES; i++) {
+	for (i = 0; i < desc->init_len; i++) {
 		memcpy(&cmd[0], &desc->init[i][0], BYTES_PER_INIT_ENTRY);
 		result += !send_cmd(dev, cmd);
 	}

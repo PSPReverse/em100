@@ -42,8 +42,17 @@
 #include <endian.h>
 #endif
 
+#define DEDIPROG_CFG_PRO_MAX_ENTRIES 212
+
 #define DEDIPROG_CFG_PRO_SIZE 176
-#define DEDIPROG_CFG_MAGIC 0x67666344
+#define DEDIPROG_CFG_PRO_SIZE_SFDP 256
+#define DEDIPROG_CFG_PRO_SIZE_SRST 144
+
+#define DEDIPROG_CFG_MAGIC  0x67666344 /* 'Dcfg' */
+#define DEDIPROG_SFDP_MAGIC 0x50444653 /* 'SFDP' */
+#define DEDIPROG_SRST_MAGIC 0x54535253 /* 'SRST' */
+#define DEDIPROG_PROT_MAGIC 0x544f5250 /* 'PROT' */
+
 #define INIT_SEQUENCE_REIGSTER_OFFSET_0 0x2300
 #define INIT_SEQUENCE_REIGSTER_OFFSET_1 0x1100
 
@@ -60,6 +69,12 @@
  * is sent to the device as <register> <value>, however the data is sent in
  * big endian format. Additionally, each entry is sent as a 16-byte transfer
  * with the remaining bytes all 0's.
+ *
+ * Configuration files that are >= 436 bytes contain SFDP data, separated by
+ * the magic value 'SFDP' while those that are 584 bytes contain SRST data
+ * separated by the magic value 'SRST' and containing 0 or 3 entries followed
+ * by PROT data in the rest of the buffer.  Unfortunately there does not seem
+ * to be any change in the version fields and these are still reported as 1.1.
  */
 
 
@@ -93,6 +108,7 @@ static int parse_and_output_config(struct dediprog_cfg_pro *cfg)
 	struct dediprog_cfg_hdr *hdr;
 	const char *vendor, *chip_name;
 	uint16_t reg_offset;
+	int entries = 0;
 
 	hdr = &cfg->hdr;
 
@@ -162,12 +178,81 @@ static int parse_and_output_config(struct dediprog_cfg_pro *cfg)
 
 		printf("\t\t\t{ 0x%02x, 0x%02x, 0x%02x, 0x%02x },\n",
 		       reg[0], reg[1], value[0], value[1]);
+
+		++entries;
 	}
 
-	printf("\t\t},\n");
-	printf("\t},\n");
+	return entries;
+}
 
-	return 0;
+static int parse_and_output_sfdp(FILE *f)
+{
+	int i, len = 0;
+	unsigned char sfdp_buffer[DEDIPROG_CFG_PRO_SIZE_SFDP];
+
+	if (fread(sfdp_buffer, sizeof(sfdp_buffer), 1, f) != 1) {
+		fprintf(stderr, "Error reading SFDP\n");
+		return -1;
+	}
+
+	printf("\t\t\t/* SFDP */\n");
+	printf("\t\t\t{ 0x23, 0xc9, 0x00, 0x01 },\n");
+	len++;
+
+	for (i = 0; i < DEDIPROG_CFG_PRO_SIZE_SFDP; i+=2) {
+		printf("\t\t\t{ 0x23, 0xc1, 0x%02x, 0x%02x },\n",
+		       sfdp_buffer[i+1], sfdp_buffer[i]);
+		len++;
+	}
+
+	return len;
+}
+
+static int parse_and_output_srst(FILE *f)
+{
+	int i, len = 0;
+	uint32_t magic;
+	unsigned char srst_buffer[DEDIPROG_CFG_PRO_SIZE_SRST];
+
+	if (fread(srst_buffer, sizeof(srst_buffer), 1, f) != 1) {
+		fprintf(stderr, "Error reading SRST\n");
+		return -1;
+	}
+
+	/* SRST has 0 or 3 entries before PROT */
+	memcpy(&magic, &srst_buffer[0], sizeof(magic));
+
+	if (magic != DEDIPROG_PROT_MAGIC) {
+		int j;
+
+		printf("\t\t\t/* SRST */\n");
+
+		for (j = 0; j < 3; j++) {
+			printf("\t\t\t{ 0x23, 0x%02x, 0x%02x, 0x%02x },\n",
+			       srst_buffer[j*4+2],
+			       srst_buffer[j*4+1],
+			       srst_buffer[j*4]);
+			len++;
+		}
+
+		/* Start after SFDP data and PROT magic */
+		i = 16;
+	} else {
+		/* Start after PROT magic */
+		i = 4;
+	}
+
+	printf("\t\t\t/* PROT */\n");
+	printf("\t\t\t{ 0x23, 0xc4, 0x00, 0x01 },\n");
+	len++;
+
+	for (; i < DEDIPROG_CFG_PRO_SIZE_SRST; i+=2) {
+		printf("\t\t\t{ 0x23, 0xc5, 0x%02x, 0x%02x },\n",
+		       srst_buffer[i+1], srst_buffer[i]);
+		len++;
+	}
+
+	return len;
 }
 
 int main(int argc, char *argv[])
@@ -176,21 +261,25 @@ int main(int argc, char *argv[])
 	FILE *f;
 	struct dediprog_cfg_pro *cfg;
 	const char *filename;
+	int init_len = 0;
 
 	printf("\n#ifndef EM100PRO_CHIPS_H\n");
 	printf("#define EM100PRO_CHIPS_H\n\n");
 	printf("#include <stdint.h>\n");
-	printf("#define NUM_INIT_ENTRIES 11\n");
+	printf("#define NUM_INIT_ENTRIES %d\n", DEDIPROG_CFG_PRO_MAX_ENTRIES);
 	printf("#define BYTES_PER_INIT_ENTRY 4\n");
 	printf("typedef struct {\n");
 	printf("\tconst char *name;\n");
 	printf("\tunsigned int size;\n");
 	printf("\tuint8_t init[NUM_INIT_ENTRIES][BYTES_PER_INIT_ENTRY];\n");
+	printf("\tint init_len;\n");
 	printf("} chipdesc;\n\n");
 
 	printf("const chipdesc chips[] = {\n");
 
 	for (i=1; i<argc; i++) {
+		uint32_t magic;
+
 		filename = argv[i];
 		f = fopen(filename, "r");
 		if (!f) {
@@ -206,10 +295,43 @@ int main(int argc, char *argv[])
 
 		cfg = (typeof(cfg))&cfg_buffer[0];
 
-		if (parse_and_output_config(cfg)) {
+		init_len = parse_and_output_config(cfg);
+		if (init_len < 0) {
 			fprintf(stderr, "Error parsing %s\n", filename);
 		}
 
+		/* Handle any extra data */
+		while (1) {
+			int ret = 0;
+
+			if (fread(&magic, sizeof(magic), 1, f) != 1)
+				break;
+
+			switch (magic) {
+			case DEDIPROG_SFDP_MAGIC:
+				ret = parse_and_output_sfdp(f);
+				break;
+			case DEDIPROG_SRST_MAGIC:
+				ret = parse_and_output_srst(f);
+				break;
+			default:
+				fprintf(stderr, "Unknown magic: 0x%08x\n",
+					magic);
+				break;
+			}
+
+			if (ret < 0) {
+				perror(filename);
+				fclose(f);
+				exit(1);
+			}
+
+			init_len += ret;
+		}
+
+		printf("\t\t},\n");
+		printf("\t\t.init_len = %d,\n", init_len);
+		printf("\t},\n");
 
 		fclose(f);
 	}
