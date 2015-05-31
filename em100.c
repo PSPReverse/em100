@@ -426,21 +426,47 @@ static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
 static int read_data(libusb_device_handle *dev, void *data, int length)
 {
 	int actual;
+	int transfer_length = 0x200000;
+	int bytes_read=0;
+	int bytes_left;
+	int bytes_to_read;
 	unsigned char cmd[16];
 	memset(cmd, 0, 16);
 	cmd[0] = 0x41; /* em100-to-host eeprom data */
 	/* cmd 1-3 might be start address? Hard code 0 for now, haven't seen anything else in the logs */
 	/* when doing cmd 1-3, check if 4-6 are end address or length */
-	cmd[4] = length & 0xff;
-	cmd[5] = (length >> 8) & 0xff;
+	cmd[5] = (length >> 24) & 0xff;
 	cmd[6] = (length >> 16) & 0xff;
+	cmd[7] = (length >> 8) & 0xff;
+	cmd[8] = length & 0xff;
+
 	if (!send_cmd(dev, cmd)) {
 		printf("error initiating host-to-em100 transfer.\n");
 		return 0;
 	}
-	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN, data, length, &actual, BULK_SEND_TIMEOUT);
-	printf("tried reading %d bytes, got %d\n", length, actual);
-	return (actual == length);
+
+	while (bytes_read < length) {
+		actual = 0;
+
+		bytes_left = length - bytes_read;
+		bytes_to_read = (bytes_left < transfer_length) ?
+			bytes_left : transfer_length;
+
+		libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN,
+				     data + bytes_read, bytes_to_read,
+				     &actual, BULK_SEND_TIMEOUT);
+
+		bytes_read += actual;
+		if (actual < bytes_to_read) {
+			printf("tried reading %d bytes, got %d\n",
+			       bytes_to_read, actual);
+			break;
+		}
+
+		printf("Read %d bytes of %d\n", bytes_read, length);
+	}
+
+	return (bytes_read == length);
 }
 
 static int send_data(libusb_device_handle *dev, unsigned char *data, int length)
