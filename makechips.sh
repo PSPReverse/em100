@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-URL=http://www.dediprog.com/save/78.zip/to/EM100Pro_4.2.20.zip
+URL=http://www.dediprog.com/save/78.rar/to/EM100Pro_4.2.24.rar
 
 if ! which curl > /dev/null; then
   echo "Install curl to run this script."
@@ -24,6 +24,10 @@ if ! which curl > /dev/null; then
 fi
 if ! which 7z > /dev/null; then
   echo "Install 7z (aka p7zip-full on Ubuntu, p7zip-plugins on fedora) to run this script."
+  exit 1
+fi
+if ! which unrar > /dev/null; then
+  echo "Install unrar to run this script."
   exit 1
 fi
 
@@ -40,14 +44,14 @@ else
   curl -s $URL -o $FILE || exit
 fi
 echo Unpacking configs...
-if ! 7z x $FILE ${FILE%.zip}.msi > /dev/null ; then
+if ! unrar x $FILE ${FILE%.rar}.msi > /dev/null ; then
   echo "No msi component found. Is ${URL} a correct url?" >&2
   echo -n "check http://www.dediprog.com/download?u=42&l=EM100Pro and edit " >&2
   echo "$0 to use the latest archive URL" >&2
   rm -rf $TEMP
   exit 1
 fi
-if ! 7z x ${FILE%.zip}.msi PRO_* > /dev/null ; then
+if ! 7z x ${FILE%.rar}.msi PRO_* > /dev/null ; then
   echo "No PRO_* components found..."
   rm -rf $TEMP
   exit 1
