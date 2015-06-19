@@ -135,7 +135,7 @@ static int read_spi_trace(libusb_device_handle *dev)
 		int len = get_response(dev, data, sizeof(data));
 		if (len != sizeof(data)) {
 			/* FIXME: handle error: device reset? */
-			printf("error, len = %d instead of %ld. bailing out\n\n", len, sizeof(data));
+			printf("error, len = %d instead of %zd. bailing out\n\n", len, sizeof(data));
 			return 0;
 		}
 		count = (data[0] << 8) | data[1];
