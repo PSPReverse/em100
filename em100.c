@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 The Chromium OS Authors.
+ * Copyright 2012-2015 Google Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
