@@ -46,10 +46,6 @@ struct em100_hold_pin_states {
 	int value;
 };
 
-static int get_version(struct em100 *em100);
-static int get_serialno(struct em100 *em100);
-static int set_hold_pin_state(libusb_device_handle *dev, int pin_state);
-
 static const struct em100_hold_pin_states hold_pin_states[] = {
 	{ "FLOAT", 0x2 },
 	{ "LOW", 0x0 },
@@ -180,6 +176,57 @@ static int read_spi_trace(libusb_device_handle *dev)
 	return 1;
 }
 
+/**
+ * get_version: fetch firmware version information
+ * @param em100: initialized em100 device structure
+ *
+ * out(16 bytes): 0x10 0 .. 0
+ * in(len + 4 bytes): 0x04 fpga_major fpga_minor mcu_major mcu_minor
+ */
+static int get_version(struct em100 *em100)
+{
+	unsigned char cmd[16];
+	unsigned char data[512];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x10; /* version */
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 512);
+	if ((len == 5) && (data[0] == 4)) {
+		em100->mcu = (data[3]*100) + data[4];
+		em100->fpga = (data[1]*100) + data[2];
+		return 1;
+	}
+	return 0;
+}
+
+/**
+ * get_serialno: fetch device's serial number
+ * @param em100: initialized em100 device structure
+ *
+ * out(16 bytes): 0x33 0x1f 0xff 0 .. 0
+ * in(len + 255 bytes): 0xff ?? serno_lo serno_hi ?? ?? .. ??
+ */
+static int get_serialno(struct em100 *em100)
+{
+	unsigned char cmd[16];
+	unsigned char data[256];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x33; /* read configuration block */
+	cmd[1] = 0x1f;
+	cmd[2] = 0xff;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 256);
+	if ((len == 256) && (data[0] == 255)) {
+		em100->serialno = (data[3]<<8) + data[2];
+		return 1;
+	}
+	return 0;
+}
+
 static int em100_attach(struct em100 *em100)
 {
 	libusb_device **devs;
@@ -283,76 +330,6 @@ static int set_state(libusb_device_handle *dev, int run)
 	return send_cmd(dev, cmd);
 }
 
-/**
- * get_version: fetch firmware version information
- * @param em100: initialized em100 device structure
- *
- * out(16 bytes): 0x10 0 .. 0
- * in(len + 4 bytes): 0x04 fpga_major fpga_minor mcu_major mcu_minor
- */
-static int get_version(struct em100 *em100)
-{
-	unsigned char cmd[16];
-	unsigned char data[512];
-	memset(cmd, 0, 16);
-	cmd[0] = 0x10; /* version */
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-	int len = get_response(em100->dev, data, 512);
-	if ((len == 5) && (data[0] == 4)) {
-		em100->mcu = (data[3]*100) + data[4];
-		em100->fpga = (data[1]*100) + data[2];
-		return 1;
-	}
-	return 0;
-}
-
-/**
- * get_serialno: fetch device's serial number
- * @param em100: initialized em100 device structure
- *
- * out(16 bytes): 0x33 0x1f 0xff 0 .. 0
- * in(len + 255 bytes): 0xff ?? serno_lo serno_hi ?? ?? .. ??
- */
-static int get_serialno(struct em100 *em100)
-{
-	unsigned char cmd[16];
-	unsigned char data[256];
-	memset(cmd, 0, 16);
-	cmd[0] = 0x33; /* read configuration block */
-	cmd[1] = 0x1f;
-	cmd[2] = 0xff;
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-	int len = get_response(em100->dev, data, 256);
-	if ((len == 256) && (data[0] == 255)) {
-		em100->serialno = (data[3]<<8) + data[2];
-		return 1;
-	}
-	return 0;
-}
-
-static int set_hold_pin_state_from_str(libusb_device_handle *dev, const char *state)
-{
-	int pin_state;
-	const struct em100_hold_pin_states *s = &hold_pin_states[0];
-
-	while (s->description != NULL) {
-		if (!strcmp(s->description, state))
-			break;
-		s++;
-	}
-	if (s->description == NULL) {
-		printf("Invalid hold pin state: %s\n", state);
-		return 0;
-	}
-	pin_state = s->value;
-
-	return set_hold_pin_state(dev, pin_state);
-}
-
 static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
 {
 	unsigned char cmd[16];
@@ -421,6 +398,25 @@ static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
 	}
 
 	return 1;
+}
+
+static int set_hold_pin_state_from_str(libusb_device_handle *dev, const char *state)
+{
+	int pin_state;
+	const struct em100_hold_pin_states *s = &hold_pin_states[0];
+
+	while (s->description != NULL) {
+		if (!strcmp(s->description, state))
+			break;
+		s++;
+	}
+	if (s->description == NULL) {
+		printf("Invalid hold pin state: %s\n", state);
+		return 0;
+	}
+	pin_state = s->value;
+
+	return set_hold_pin_state(dev, pin_state);
 }
 
 static int read_data(libusb_device_handle *dev, void *data, int length)
