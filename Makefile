@@ -16,7 +16,7 @@
 #
 
 CFLAGS?=-O2 -g
-CFLAGS+=-Wall -Werror
+CFLAGS+=-Wall -Werror -Wno-error=unused-function
 CC?=gcc
 PKG_CONFIG?=pkg-config
 
