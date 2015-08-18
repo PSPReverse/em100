@@ -205,6 +205,68 @@ static int get_version(struct em100 *em100)
 	return 0;
 }
 
+typedef enum {
+	out_trigger_vcc = 0,
+	out_reset_vcc   = 1,
+	out_ref_plus    = 2,
+	out_ref_minus   = 3,
+	out_buffer_vcc  = 4
+} set_voltage_channel_t;
+
+static int set_voltage(struct em100 *em100, set_voltage_channel_t channel, int mV)
+{
+	unsigned char cmd[16];
+
+	if ((channel == out_buffer_vcc) &&
+		(mV != 18 && mV != 25 && mV != 33)) {
+		printf("Error: For Buffer VCC, voltage needs to be 1.8V, 2.5V or 3.3V.\n");
+		return 0;
+	}
+
+	memset(cmd, 0, 16);
+	cmd[0] = 0x11; /* set voltage */
+	cmd[1] = channel;
+	cmd[2] = mV >> 8;
+	cmd[3] = mV & 0xff;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	return 1;
+}
+
+typedef enum {
+	in_v1_2        = 0,
+	in_e_vcc       = 1,
+	in_ref_plus    = 2,
+	in_ref_minus   = 3,
+	in_buffer_vcc  = 4,
+	in_trigger_vcc = 5,
+	in_reset_vcc   = 6,
+	in_v3_3        = 7,
+	in_buffer_v3_3 = 8,
+	in_v5          = 9
+} get_voltage_channel_t;
+
+static int get_voltage(struct em100 *em100, get_voltage_channel_t channel)
+{
+	unsigned char cmd[16];
+	unsigned char data[512];
+	int voltage = 0;
+
+	memset(cmd, 0, 16);
+	cmd[0] = 0x12; /* measure voltage */
+	cmd[1] = channel;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 512);
+	if ((len == 3) && (data[0] == 2)) {
+		voltage = (data[1] << 8) + data[2];
+		return voltage;
+	}
+	return 0;
+}
+
 /**
  * get_serialno: fetch device's serial number
  * @param em100: initialized em100 device structure
