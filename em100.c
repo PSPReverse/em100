@@ -36,9 +36,9 @@ void exit_handler(int sig) {
 struct em100 {
 	libusb_device_handle *dev;
 	libusb_context *ctx;
-	unsigned int mcu;
-	unsigned int fpga;
-	unsigned int serialno;
+	uint16_t mcu;
+	uint16_t fpga;
+	uint32_t serialno;
 };
 
 struct em100_hold_pin_states {
