@@ -70,21 +70,6 @@ static int get_response(libusb_device_handle *dev, void *data, int length)
 	return actual;
 }
 
-static int check_status(struct em100 *em100)
-{
-	unsigned char cmd[16];
-	unsigned char data[512];
-	memset(cmd, 0, 16);
-	cmd[0] = 0x30; /* status */
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-	int len = get_response(em100->dev, data, 512);
-	if ((len == 3) && (data[0] == 0x20) && (data[1] == 0x20) && (data[2] == 0x15))
-		return 1;
-	return 0;
-}
-
 /**
  * reset_spi_trace: clear SPI trace buffer
  * @param em100: em100 device structure
@@ -309,6 +294,21 @@ static int get_serialno(struct em100 *em100)
 		em100->serialno = (data[3]<<8) + data[2];
 		return 1;
 	}
+	return 0;
+}
+
+static int check_status(struct em100 *em100)
+{
+	unsigned char cmd[16];
+	unsigned char data[512];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x30; /* status */
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 512);
+	if ((len == 3) && (data[0] == 0x20) && (data[1] == 0x20) && (data[2] == 0x15))
+		return 1;
 	return 0;
 }
 
