@@ -91,8 +91,8 @@ static int get_version(struct em100 *em100)
 	}
 	int len = get_response(em100->dev, data, 512);
 	if ((len == 5) && (data[0] == 4)) {
-		em100->mcu = (data[3]*100) + data[4];
-		em100->fpga = (data[1]*100) + data[2];
+		em100->mcu = (data[3] << 8) | data[4];
+		em100->fpga = (data[1] << 8) | data[2];
 		return 1;
 	}
 	return 0;
@@ -905,8 +905,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	printf("MCU version: %d.%d\n", em100.mcu/100, em100.mcu%100);
-	printf("FPGA version: %d.%d\n", em100.fpga/100, em100.fpga%100);
+	printf("MCU version: %d.%02d\n", em100.mcu >> 8, em100.mcu & 0xff);
+	printf("FPGA version: %d.%02d\n", em100.fpga >> 8, em100.fpga & 0xff);
 	printf("Serial number: DP%06d\n", em100.serialno);
 
 	if (do_stop) {
