@@ -419,7 +419,9 @@ static int set_hold_pin_state_from_str(struct em100 *em100, const char *state)
 	return set_hold_pin_state(em100, pin_state);
 }
 
-static int read_data(struct em100 *em100, void *data, int length)
+/* SDRAM related operations */
+
+static int read_sdram(struct em100 *em100, void *data, int address, int length)
 {
 	int actual;
 	int transfer_length = 0x200000;
@@ -427,10 +429,13 @@ static int read_data(struct em100 *em100, void *data, int length)
 	int bytes_left;
 	int bytes_to_read;
 	unsigned char cmd[16];
+
 	memset(cmd, 0, 16);
 	cmd[0] = 0x41; /* em100-to-host eeprom data */
-	/* cmd 1-3 might be start address? Hard code 0 for now, haven't seen anything else in the logs */
-	/* when doing cmd 1-3, check if 4-6 are end address or length */
+	cmd[1] = (address >> 24) & 0xff;
+	cmd[2] = (address >> 16) & 0xff;
+	cmd[3] = (address >> 8) & 0xff;
+	cmd[4] = address & 0xff;
 	cmd[5] = (length >> 24) & 0xff;
 	cmd[6] = (length >> 16) & 0xff;
 	cmd[7] = (length >> 8) & 0xff;
@@ -465,7 +470,7 @@ static int read_data(struct em100 *em100, void *data, int length)
 	return (bytes_read == length);
 }
 
-static int send_data(struct em100 *em100, unsigned char *data, int length)
+static int write_sdram(struct em100 *em100, unsigned char *data, int address, int length)
 {
 	int actual;
 	int transfer_length = 0x200000;
@@ -473,10 +478,13 @@ static int send_data(struct em100 *em100, unsigned char *data, int length)
 	int bytes_left;
 	int bytes_to_send;
 	unsigned char cmd[16];
+
 	memset(cmd, 0, 16);
 	cmd[0] = 0x40; /* host-to-em100 eeprom data */
-	/* cmd 1-4 might be start address? Hard code 0 for now, haven't seen anything else in the logs */
-	/* when doing cmd 1-4, check if 5-7 are end address or length */
+	cmd[1] = (address >> 24) & 0xff;
+	cmd[2] = (address >> 16) & 0xff;
+	cmd[3] = (address >> 8) & 0xff;
+	cmd[4] = address & 0xff;
 	cmd[5] = (length >> 24) & 0xff;
 	cmd[6] = (length >> 16) & 0xff;
 	cmd[7] = (length >> 8) & 0xff;
@@ -502,7 +510,6 @@ static int send_data(struct em100 *em100, unsigned char *data, int length)
 		}
 
 		printf("Sent %d bytes of %d\n", bytes_sent, length);
-
 	}
 
 	printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");
@@ -645,7 +652,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		send_data(&em100, (unsigned char *)data, length);
+		write_sdram(&em100, (unsigned char *)data, 0x00000000, length);
 		if (verify) {
 			int done;
 			void *readback = malloc(length);
@@ -653,7 +660,7 @@ int main(int argc, char **argv)
 				printf("FATAL: couldn't allocate memory\n");
 				return 1;
 			}
-			done = read_data(&em100, readback, length);
+			done = read_sdram(&em100, readback, 0x00000000, length);
 			if (done && (memcmp(data, readback, length) == 0))
 				printf("Verify: PASS\n");
 			else
