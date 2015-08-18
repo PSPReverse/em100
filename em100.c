@@ -267,6 +267,25 @@ static int get_voltage(struct em100 *em100, get_voltage_channel_t channel)
 	return 0;
 }
 
+typedef enum {
+	both_off = 0,
+	red_on   = 1,
+	green_on = 2,
+	both_on  = 3
+} led_state_t;
+
+static int set_led(struct em100 *em100, led_state_t led_state)
+{
+	unsigned char cmd[16];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x13; /* set LED */
+	cmd[1] = led_state;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	return 1;
+}
+
 /**
  * get_serialno: fetch device's serial number
  * @param em100: initialized em100 device structure
