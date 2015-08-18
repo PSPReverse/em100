@@ -494,24 +494,13 @@ static int write_spi_flash_page(libusb_device_handle *dev, unsigned char *data, 
 /**
  * get_serialno: fetch device's serial number
  * @param em100: initialized em100 device structure
- *
- * out(16 bytes): 0x33 0x1f 0xff 0 .. 0
- * in(len + 255 bytes): 0xff ?? serno_lo serno_hi ?? ?? .. ??
  */
 static int get_serialno(struct em100 *em100)
 {
-	unsigned char cmd[16];
 	unsigned char data[256];
-	memset(cmd, 0, 16);
-	cmd[0] = 0x33; /* read configuration block */
-	cmd[1] = 0x1f;
-	cmd[2] = 0xff;
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-	int len = get_response(em100->dev, data, 256);
-	if ((len == 256) && (data[0] == 255)) {
-		em100->serialno = (data[3]<<8) + data[2];
+	if (read_spi_flash_page(em100, 0x1fff00, data)) {
+		em100->serialno = (data[5] << 24) | (data[4] << 16) | \
+				  (data[3] << 8) | data[2];
 		return 1;
 	}
 	return 0;
