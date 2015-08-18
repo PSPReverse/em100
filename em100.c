@@ -68,16 +68,16 @@ static int get_response(libusb_device_handle *dev, void *data, int length)
 	return actual;
 }
 
-static int check_status(libusb_device_handle *dev)
+static int check_status(struct em100 *em100)
 {
 	unsigned char cmd[16];
 	unsigned char data[512];
 	memset(cmd, 0, 16);
 	cmd[0] = 0x30; /* status */
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
-	int len = get_response(dev, data, 512);
+	int len = get_response(em100->dev, data, 512);
 	if ((len == 3) && (data[0] == 0x20) && (data[1] == 0x20) && (data[2] == 0x15))
 		return 1;
 	return 0;
@@ -85,16 +85,16 @@ static int check_status(libusb_device_handle *dev)
 
 /**
  * reset_spi_trace: clear SPI trace buffer
- * @param dev: libusb device structure
+ * @param em100: em100 device structure
  *
  * out(16 bytes): 0xbd 0 .. 0
  */
-static int reset_spi_trace(libusb_device_handle *dev)
+static int reset_spi_trace(struct em100 *em100)
 {
 	unsigned char cmd[16];
 	memset(cmd, 0, 16);
 	cmd[0] = 0xbd; /* reset SPI trace buffer*/
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
 	return 1;
@@ -102,7 +102,7 @@ static int reset_spi_trace(libusb_device_handle *dev)
 
 /**
  * read_spi_trace: fetch SPI trace data
- * @param dev: libusb device structure
+ * @param em100: em100 device structure
  * globals: curpos, counter, cmdid
  *
  * out(16 bytes): bc 00 00 00 08 00 00 00 00 15 00 00 00 00 00 00
@@ -112,7 +112,7 @@ static int reset_spi_trace(libusb_device_handle *dev)
 unsigned int counter = 0;
 unsigned char curpos = 0;
 unsigned char cmdid = 0xff; // timestamp, so never a valid command id
-static int read_spi_trace(libusb_device_handle *dev)
+static int read_spi_trace(struct em100 *em100)
 {
 	unsigned char cmd[16];
 	unsigned char data[8192];
@@ -122,13 +122,13 @@ static int read_spi_trace(libusb_device_handle *dev)
 	cmd[4] = 0x08; /* cmd1..cmd4 are probably u32BE on how many
 			  reports (8192 bytes each) to fetch */
 	cmd[9] = 0x15; /* no idea */
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		printf("sending trace command failed\n");
 		return 0;
 	}
 	for (report = 0; report < 8; report++) {
 		memset(data, 0, sizeof(data));
-		int len = get_response(dev, data, sizeof(data));
+		int len = get_response(em100->dev, data, sizeof(data));
 		if (len != sizeof(data)) {
 			/* FIXME: handle error: device reset? */
 			printf("error, len = %d instead of %zd. bailing out\n\n", len, sizeof(data));
@@ -265,13 +265,13 @@ static int em100_attach(struct em100 *em100)
 		return 0;
 	}
 
-	if (!check_status(dev)) {
+	em100->dev = dev;
+	em100->ctx = ctx;
+
+	if (!check_status(em100)) {
 		printf("Device status unknown.\n");
 		return 0;
 	}
-
-	em100->dev = dev;
-	em100->ctx = ctx;
 
 	if (!get_version(em100)) {
 		printf("Failed fetching version information.\n");
@@ -299,7 +299,7 @@ static int em100_detach(struct em100 *em100)
 	return 0;
 }
 
-static int set_chip_type(libusb_device_handle *dev, const chipdesc *desc)
+static int set_chip_type(struct em100 *em100, const chipdesc *desc)
 {
 	unsigned char cmd[16];
 	/* result counts unsuccessful send_cmd()s.
@@ -314,23 +314,23 @@ static int set_chip_type(libusb_device_handle *dev, const chipdesc *desc)
 
 	for (i = 0; i < desc->init_len; i++) {
 		memcpy(&cmd[0], &desc->init[i][0], BYTES_PER_INIT_ENTRY);
-		result += !send_cmd(dev, cmd);
+		result += !send_cmd(em100->dev, cmd);
 	}
 
 	return !result;
 }
 
-static int set_state(libusb_device_handle *dev, int run)
+static int set_state(struct em100 *em100, int run)
 {
 	unsigned char cmd[16];
 	memset(cmd, 0, 16);
 	cmd[0] = 0x23;
 	cmd[1] = 0x28;
 	cmd[3] = run & 1;
-	return send_cmd(dev, cmd);
+	return send_cmd(em100->dev, cmd);
 }
 
-static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
+static int set_hold_pin_state(struct em100 *em100, int pin_state)
 {
 	unsigned char cmd[16];
 	unsigned char data[512];
@@ -340,10 +340,10 @@ static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
 	cmd[0] = 0x22;
 	cmd[1] = 0x2a;
 
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
-	len = get_response(dev, data, sizeof(data));
+	len = get_response(em100->dev, data, sizeof(data));
 	if (len != 3 || data[0] != 0x2 || data[1] != 0x0) {
 		printf("Couldn't get hold pin state.\n");
 		return 0;
@@ -354,17 +354,17 @@ static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
 	cmd[1] = 0x2a;
 	cmd[2] = 0x00;
 	cmd[3] = (1 << 2) | data[2];
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
 
 	memset(cmd, 0, 16);
 	cmd[0] = 0x22;
 	cmd[1] = 0x2a;
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
-	len = get_response(dev, data, sizeof(data));
+	len = get_response(em100->dev, data, sizeof(data));
 	if (len != 3 || data[0] != 0x2 || data[1] != 0x0) {
 		printf("Couldn't get hold pin state.\n");
 		return 0;
@@ -378,7 +378,7 @@ static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
 	cmd[3] = pin_state;
 
 	/* Send the pin state. */
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
 
@@ -386,10 +386,10 @@ static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
 	memset(cmd, 0, 16);
 	cmd[0] = 0x22;
 	cmd[1] = 0x2a;
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
-	len = get_response(dev, data, sizeof(data));
+	len = get_response(em100->dev, data, sizeof(data));
 
 	if (len != 3 || data[0] != 0x2 || data[1] != 0x0 || data[2] != pin_state) {
 		printf("Invalid pin state response: len(%d) 0x%02x 0x%02x 0x%02x\n",
@@ -400,7 +400,7 @@ static int set_hold_pin_state(libusb_device_handle *dev, int pin_state)
 	return 1;
 }
 
-static int set_hold_pin_state_from_str(libusb_device_handle *dev, const char *state)
+static int set_hold_pin_state_from_str(struct em100 *em100, const char *state)
 {
 	int pin_state;
 	const struct em100_hold_pin_states *s = &hold_pin_states[0];
@@ -416,10 +416,10 @@ static int set_hold_pin_state_from_str(libusb_device_handle *dev, const char *st
 	}
 	pin_state = s->value;
 
-	return set_hold_pin_state(dev, pin_state);
+	return set_hold_pin_state(em100, pin_state);
 }
 
-static int read_data(libusb_device_handle *dev, void *data, int length)
+static int read_data(struct em100 *em100, void *data, int length)
 {
 	int actual;
 	int transfer_length = 0x200000;
@@ -436,7 +436,7 @@ static int read_data(libusb_device_handle *dev, void *data, int length)
 	cmd[7] = (length >> 8) & 0xff;
 	cmd[8] = length & 0xff;
 
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		printf("error initiating host-to-em100 transfer.\n");
 		return 0;
 	}
@@ -448,7 +448,7 @@ static int read_data(libusb_device_handle *dev, void *data, int length)
 		bytes_to_read = (bytes_left < transfer_length) ?
 			bytes_left : transfer_length;
 
-		libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN,
+		libusb_bulk_transfer(em100->dev, 2 | LIBUSB_ENDPOINT_IN,
 				     data + bytes_read, bytes_to_read,
 				     &actual, BULK_SEND_TIMEOUT);
 
@@ -465,7 +465,7 @@ static int read_data(libusb_device_handle *dev, void *data, int length)
 	return (bytes_read == length);
 }
 
-static int send_data(libusb_device_handle *dev, unsigned char *data, int length)
+static int send_data(struct em100 *em100, unsigned char *data, int length)
 {
 	int actual;
 	int transfer_length = 0x200000;
@@ -482,7 +482,7 @@ static int send_data(libusb_device_handle *dev, unsigned char *data, int length)
 	cmd[7] = (length >> 8) & 0xff;
 	cmd[8] = length & 0xff;
 
-	if (!send_cmd(dev, cmd)) {
+	if (!send_cmd(em100->dev, cmd)) {
 		printf("error initiating host-to-em100 transfer.\n");
 		return 0;
 	}
@@ -493,7 +493,7 @@ static int send_data(libusb_device_handle *dev, unsigned char *data, int length)
 		bytes_left = length - bytes_sent;
 		bytes_to_send = (bytes_left < transfer_length) ? bytes_left : transfer_length;
 
-		libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT,
+		libusb_bulk_transfer(em100->dev, 1 | LIBUSB_ENDPOINT_OUT,
 			data + bytes_sent, bytes_to_send, &actual, BULK_SEND_TIMEOUT);
 		bytes_sent += actual;
 		if (actual < bytes_to_send) {
@@ -603,18 +603,18 @@ int main(int argc, char **argv)
 	printf("Serial number: DP%06d\n", em100.serialno);
 
 	if (do_stop) {
-		set_state(em100.dev, 0);
+		set_state(&em100, 0);
 	}
 
 	if (desiredchip) {
-		if (!set_chip_type(em100.dev, chip)) {
+		if (!set_chip_type(&em100, chip)) {
 			printf("Failed configuring chip type.\n");
 			return 0;
 		}
 	}
 
 	if (holdpin) {
-		if (!set_hold_pin_state_from_str(em100.dev, holdpin)) {
+		if (!set_hold_pin_state_from_str(&em100, holdpin)) {
 			printf("Failed configuring hold pin state.\n");
 			return 0;
 		}
@@ -645,7 +645,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		send_data(em100.dev, (unsigned char *)data, length);
+		send_data(&em100, (unsigned char *)data, length);
 		if (verify) {
 			int done;
 			void *readback = malloc(length);
@@ -653,7 +653,7 @@ int main(int argc, char **argv)
 				printf("FATAL: couldn't allocate memory\n");
 				return 1;
 			}
-			done = read_data(em100.dev, readback, length);
+			done = read_data(&em100, readback, length);
 			if (done && (memcmp(data, readback, length) == 0))
 				printf("Verify: PASS\n");
 			else
@@ -665,18 +665,18 @@ int main(int argc, char **argv)
 	}
 
 	if (do_start) {
-		set_state(em100.dev, 1);
+		set_state(&em100, 1);
 	}
 
 	if (trace) {
 		struct sigaction signal_action;
 
-		if (!set_hold_pin_state(em100.dev, 3)) {
+		if (!set_hold_pin_state(&em100, 3)) {
 			printf("failed to set em100 to input\n");
 			return 1;
 		}
-		set_state(em100.dev, 1);
-		reset_spi_trace(em100.dev);
+		set_state(&em100, 1);
+		reset_spi_trace(&em100);
 
 		signal_action.sa_handler = exit_handler;
 		signal_action.sa_flags = 0;
@@ -684,13 +684,13 @@ int main(int argc, char **argv)
 		sigaction(SIGINT, &signal_action, NULL);
 
 		while (!do_exit_flag) {
-			read_spi_trace(em100.dev);
+			read_spi_trace(&em100);
 		}
 
-		set_state(em100.dev, 0);
-		reset_spi_trace(em100.dev);
+		set_state(&em100, 0);
+		reset_spi_trace(&em100);
 
-		if (!set_hold_pin_state(em100.dev, 2)) {
+		if (!set_hold_pin_state(&em100, 2)) {
 			printf("failed to set em100 to float\n");
 			return 1;
 		}
