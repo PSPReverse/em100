@@ -53,6 +53,8 @@ static const struct em100_hold_pin_states hold_pin_states[] = {
 	{ NULL, 0x0 },
 };
 
+/* USB communication */
+
 static int send_cmd(libusb_device_handle *dev, void *data)
 {
 	int actual;
@@ -175,6 +177,8 @@ static int read_spi_trace(struct em100 *em100)
 	}
 	return 1;
 }
+
+/* System level operations */
 
 /**
  * get_version: fetch firmware version information
