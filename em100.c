@@ -20,6 +20,7 @@
 #include <string.h>
 #include <signal.h>
 #include <getopt.h>
+#include <unistd.h>
 #include <libusb.h>
 
 #define BULK_SEND_TIMEOUT	5000	/* sentinel value */
@@ -265,6 +266,104 @@ static int set_led(struct em100 *em100, led_state_t led_state)
 	memset(cmd, 0, 16);
 	cmd[0] = 0x13; /* set LED */
 	cmd[1] = led_state;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	return 1;
+}
+
+/* FPGA related operations */
+
+/**
+ * reconfig_fpga:  Reconfigures FPGA after a change(?)
+ * @param em100: initialized em100 device structure
+ *
+ * out(16 bytes): 0x20 0 .. 0
+ */
+static int reconfig_fpga(struct em100 *em100)
+{
+	unsigned char cmd[16];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x20; /* reconfig FPGA */
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	/* Specification says to wait 2s before
+	 * issuing another USB command
+	 */
+	sleep(2);
+	return 1;
+}
+
+/**
+ * check_fpga_status:  Checkl FPGA configuration status
+ * @param em100: initialized em100 device structure
+ *
+ * out(16 bytes): 0x21 0 .. 0
+ * in(result): pass: 1, fail: 0
+ */
+static int check_fpga_status(struct em100 *em100)
+{
+	unsigned char cmd[16];
+	unsigned char data[512];
+	printf("FPGA configuration status: ");
+	memset(cmd, 0, 16);
+	cmd[0] = 0x21; /* Check FPGA status */
+	if (!send_cmd(em100->dev, cmd)) {
+		printf("Unknown\n");
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 512);
+	if (len == 1) {
+		printf("%s\n", data[0] == 1 ? "PASS" : "FAIL");
+		return 1;
+	}
+	printf("Unknown\n");
+	return 0;
+}
+
+/**
+ * read_fpga_register: Read FPGA registers
+ * @param em100: initialized em100 device structure
+ * @param reg:   FPGA register to write
+ * @param val:   pointer to value
+ *
+ * out(2 bytes): 0x22 RegAddr .. 0
+ * in(len + 2 bytes): 0x02 val val
+ */
+static int read_fpga_register(struct em100 *em100, int reg, uint16_t *val)
+{
+	unsigned char cmd[16];
+	unsigned char data[256];
+
+	memset(cmd, 0, 16);
+	cmd[0] = 0x22; /* Read FPGA register */
+	cmd[1] = reg;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 3);
+	if ((len == 3) && (data[0] == 2)) {
+		*val = (data[1] << 8) + data[2];
+		return 1;
+	}
+	return 0;
+}
+
+/**
+ * write_fpga_register: Write FPGA registers
+ * @param em100: initialized em100 device structure
+ *
+ * out(4 bytes): 0x23 RegAddr Val Val .. 0
+ */
+static int write_fpga_register(struct em100 *em100, int reg, int val)
+{
+	unsigned char cmd[16];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x23; /* Write FPGA register */
+	cmd[1] = reg;
+	cmd[2] = val >> 8;
+	cmd[3] = val & 0xff;
 	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
