@@ -519,15 +519,10 @@ static int get_serialno(struct em100 *em100)
 
 static int check_status(struct em100 *em100)
 {
-	unsigned char cmd[16];
-	unsigned char data[512];
-	memset(cmd, 0, 16);
-	cmd[0] = 0x30; /* status */
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-	int len = get_response(em100->dev, data, 512);
-	if ((len == 3) && (data[0] == 0x20) && (data[1] == 0x20) && (data[2] == 0x15))
+	int spi_flash_id;
+
+	spi_flash_id = get_spi_flash_id(em100);
+	if (spi_flash_id == 0x202015)
 		return 1;
 	return 0;
 }
