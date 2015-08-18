@@ -753,6 +753,8 @@ static int write_ht_register(struct em100 *em100, int reg, uint8_t val)
 	return 1;
 }
 
+/* High Level functions */
+
 static int set_state(struct em100 *em100, int run)
 {
 	return write_fpga_register(em100, 0x28, run & 1);
