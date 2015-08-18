@@ -609,105 +609,6 @@ static int set_chip_type(struct em100 *em100, const chipdesc *desc)
 	return !result;
 }
 
-static int set_state(struct em100 *em100, int run)
-{
-	unsigned char cmd[16];
-	memset(cmd, 0, 16);
-	cmd[0] = 0x23;
-	cmd[1] = 0x28;
-	cmd[3] = run & 1;
-	return send_cmd(em100->dev, cmd);
-}
-
-static int set_hold_pin_state(struct em100 *em100, int pin_state)
-{
-	unsigned char cmd[16];
-	unsigned char data[512];
-	int len;
-	/* Read and acknowledge hold pin state setting bit 2 of pin state respone. */
-	memset(cmd, 0, 16);
-	cmd[0] = 0x22;
-	cmd[1] = 0x2a;
-
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-	len = get_response(em100->dev, data, sizeof(data));
-	if (len != 3 || data[0] != 0x2 || data[1] != 0x0) {
-		printf("Couldn't get hold pin state.\n");
-		return 0;
-	}
-
-	memset(cmd, 0, 16);
-	cmd[0] = 0x23;
-	cmd[1] = 0x2a;
-	cmd[2] = 0x00;
-	cmd[3] = (1 << 2) | data[2];
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-
-	memset(cmd, 0, 16);
-	cmd[0] = 0x22;
-	cmd[1] = 0x2a;
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-	len = get_response(em100->dev, data, sizeof(data));
-	if (len != 3 || data[0] != 0x2 || data[1] != 0x0) {
-		printf("Couldn't get hold pin state.\n");
-		return 0;
-	}
-
-	/* Now set desired pin state. */
-	memset(cmd, 0, 16);
-	cmd[0] = 0x23;
-	cmd[1] = 0x2a;
-	cmd[2] = 0x00;
-	cmd[3] = pin_state;
-
-	/* Send the pin state. */
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-
-	/* Read the pin state. */
-	memset(cmd, 0, 16);
-	cmd[0] = 0x22;
-	cmd[1] = 0x2a;
-	if (!send_cmd(em100->dev, cmd)) {
-		return 0;
-	}
-	len = get_response(em100->dev, data, sizeof(data));
-
-	if (len != 3 || data[0] != 0x2 || data[1] != 0x0 || data[2] != pin_state) {
-		printf("Invalid pin state response: len(%d) 0x%02x 0x%02x 0x%02x\n",
-		       len, data[0], data[1], data[2]);
-		return 0;
-	}
-
-	return 1;
-}
-
-static int set_hold_pin_state_from_str(struct em100 *em100, const char *state)
-{
-	int pin_state;
-	const struct em100_hold_pin_states *s = &hold_pin_states[0];
-
-	while (s->description != NULL) {
-		if (!strcmp(s->description, state))
-			break;
-		s++;
-	}
-	if (s->description == NULL) {
-		printf("Invalid hold pin state: %s\n", state);
-		return 0;
-	}
-	pin_state = s->value;
-
-	return set_hold_pin_state(em100, pin_state);
-}
-
 /* SDRAM related operations */
 
 static int read_sdram(struct em100 *em100, void *data, int address, int length)
@@ -803,6 +704,65 @@ static int write_sdram(struct em100 *em100, unsigned char *data, int address, in
 
 	printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");
 	return (bytes_sent == length);
+}
+
+static int set_state(struct em100 *em100, int run)
+{
+	return write_fpga_register(em100, 0x28, run & 1);
+}
+
+static int set_hold_pin_state(struct em100 *em100, int pin_state)
+{
+	uint16_t val;
+
+	/* Read and acknowledge hold pin state setting bit 2 of pin state respone. */
+	if (!read_fpga_register(em100, 0x2a, &val)) {
+		printf("Couldn't get hold pin state.\n");
+		return 0;
+	}
+	write_fpga_register(em100, 0x2a, (1 << 2) | val);
+
+
+	if (!read_fpga_register(em100, 0x2a, &val)) {
+		printf("Couldn't get hold pin state.\n");
+		return 0;
+	}
+
+	/* Now set desired pin state. */
+	write_fpga_register(em100, 0x2a, pin_state);
+
+	/* Read the pin state. */
+	if (!read_fpga_register(em100, 0x2a, &val)) {
+		printf("Couldn't get hold pin state.\n");
+		return 0;
+	}
+
+	if (val != pin_state) {
+		printf("Invalid pin state response: 0x%04x (expected 0x%04x)\n",
+		       val, pin_state);
+		return 0;
+	}
+
+	return 1;
+}
+
+static int set_hold_pin_state_from_str(struct em100 *em100, const char *state)
+{
+	int pin_state;
+	const struct em100_hold_pin_states *s = &hold_pin_states[0];
+
+	while (s->description != NULL) {
+		if (!strcmp(s->description, state))
+			break;
+		s++;
+	}
+	if (s->description == NULL) {
+		printf("Invalid hold pin state: %s\n", state);
+		return 0;
+	}
+	pin_state = s->value;
+
+	return set_hold_pin_state(em100, pin_state);
 }
 
 static const struct option longopts[] = {
