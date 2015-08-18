@@ -706,6 +706,53 @@ static int write_sdram(struct em100 *em100, unsigned char *data, int address, in
 	return (bytes_sent == length);
 }
 
+/* SPI HyperTerminal related operations */
+
+/**
+ * read_ht_register: Read HT registers
+ * @param em100: initialized em100 device structure
+ *
+ * out(2 bytes): 0x50 RegAddr .. 0
+ * in(len + 1 byte): 0x02 val
+ */
+static int read_ht_register(struct em100 *em100, int reg, uint8_t *val)
+{
+	unsigned char cmd[16];
+	unsigned char data[2];
+
+	memset(cmd, 0, 16);
+	cmd[0] = 0x50; /* read fpga register */
+	cmd[1] = reg;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 2);
+	if ((len == 2) && (data[0] == 1)) {
+		*val = data[1];
+		return 1;
+	}
+	return 0;
+}
+
+/**
+ * write_ht_register: Write HT registers
+ * @param em100: initialized em100 device structure
+ *
+ * out(3 bytes): 0x51 RegAddr Val .. 0
+ */
+static int write_ht_register(struct em100 *em100, int reg, uint8_t val)
+{
+	unsigned char cmd[16];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x51; /* write fpga registers */
+	cmd[1] = reg;
+	cmd[2] = val;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	return 1;
+}
+
 static int set_state(struct em100 *em100, int run)
 {
 	return write_fpga_register(em100, 0x28, run & 1);
