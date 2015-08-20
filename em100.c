@@ -398,124 +398,6 @@ static int write_spi_flash_page(libusb_device_handle *dev, unsigned char *data, 
 	return (bytes_sent == length);
 }
 
-/**
- * get_serialno: fetch device's serial number
- * @param em100: initialized em100 device structure
- */
-static int get_serialno(struct em100 *em100)
-{
-	unsigned char data[256];
-	if (read_spi_flash_page(em100, 0x1fff00, data)) {
-		em100->serialno = (data[5] << 24) | (data[4] << 16) | \
-				  (data[3] << 8) | data[2];
-		return 1;
-	}
-	return 0;
-}
-
-static int check_status(struct em100 *em100)
-{
-	int spi_flash_id;
-
-	spi_flash_id = get_spi_flash_id(em100);
-	if (spi_flash_id == 0x202015)
-		return 1;
-	return 0;
-}
-
-static int em100_attach(struct em100 *em100)
-{
-	libusb_device **devs;
-	libusb_device_handle *dev;
-	libusb_context *ctx = NULL;
-
-	if (libusb_init(&ctx) < 0) {
-		printf("Could not init libusb.\n");
-		return 0;
-	}
-
-	libusb_set_debug(ctx, 3);
-
-	if (libusb_get_device_list(ctx, &devs) < 0) {
-		printf("Could not find USB devices.\n");
-		return 0;
-	}
-
-	dev = libusb_open_device_with_vid_pid(ctx, 0x4b4, 0x1235);
-	if (!dev) {
-		printf("Could not find em100pro.\n");
-		return 0;
-	}
-
-	libusb_free_device_list(devs, 1);
-
-	if (libusb_kernel_driver_active(dev, 0) == 1) {
-		if (libusb_detach_kernel_driver(dev, 0) != 0) {
-			printf("Could not detach kernel driver.\n");
-			return 0;
-		}
-	}
-
-	if (libusb_claim_interface(dev, 0) < 0) {
-		printf("Could not claim interface.\n");
-		return 0;
-	}
-
-	em100->dev = dev;
-	em100->ctx = ctx;
-
-	if (!check_status(em100)) {
-		printf("Device status unknown.\n");
-		return 0;
-	}
-
-	if (!get_version(em100)) {
-		printf("Failed fetching version information.\n");
-		return 0;
-	}
-
-	if (!get_serialno(em100)) {
-		printf("Failed fetching serial number.\n");
-		return 0;
-	}
-
-	return 1;
-}
-
-static int em100_detach(struct em100 *em100)
-{
-	if (libusb_release_interface(em100->dev, 0) != 0) {
-		printf("releasing interface failed.\n");
-		return 1;
-	}
-
-	libusb_close(em100->dev);
-	libusb_exit(em100->ctx);
-
-	return 0;
-}
-
-static int set_chip_type(struct em100 *em100, const chipdesc *desc)
-{
-	unsigned char cmd[16];
-	/* result counts unsuccessful send_cmd()s.
-         * These are then converted in a boolean success value
-         */
-	int result = 0;
-	int i;
-
-	printf("Sending flash chip configuration\n");
-
-	memset(cmd, 0, 16);
-
-	for (i = 0; i < desc->init_len; i++) {
-		memcpy(&cmd[0], &desc->init[i][0], BYTES_PER_INIT_ENTRY);
-		result += !send_cmd(em100->dev, cmd);
-	}
-
-	return !result;
-}
-
 /* SDRAM related operations */
 
 static int read_sdram(struct em100 *em100, void *data, int address, int length)
@@ -814,6 +696,124 @@ static int set_hold_pin_state_from_str(struct em100 *em100, const char *state)
 	pin_state = s->value;
 
 	return set_hold_pin_state(em100, pin_state);
+}
+
+/**
+ * get_serialno: fetch device's serial number
+ * @param em100: initialized em100 device structure
+ */
+static int get_serialno(struct em100 *em100)
+{
+	unsigned char data[256];
+	if (read_spi_flash_page(em100, 0x1fff00, data)) {
+		em100->serialno = (data[5] << 24) | (data[4] << 16) | \
+				  (data[3] << 8) | data[2];
+		return 1;
+	}
+	return 0;
+}
+
+static int check_status(struct em100 *em100)
+{
+	int spi_flash_id;
+
+	spi_flash_id = get_spi_flash_id(em100);
+	if (spi_flash_id == 0x202015)
+		return 1;
+	return 0;
+}
+
+static int em100_attach(struct em100 *em100)
+{
+	libusb_device **devs;
+	libusb_device_handle *dev;
+	libusb_context *ctx = NULL;
+
+	if (libusb_init(&ctx) < 0) {
+		printf("Could not init libusb.\n");
+		return 0;
+	}
+
+	libusb_set_debug(ctx, 3);
+
+	if (libusb_get_device_list(ctx, &devs) < 0) {
+		printf("Could not find USB devices.\n");
+		return 0;
+	}
+
+	dev = libusb_open_device_with_vid_pid(ctx, 0x4b4, 0x1235);
+	if (!dev) {
+		printf("Could not find em100pro.\n");
+		return 0;
+	}
+
+	libusb_free_device_list(devs, 1);
+
+	if (libusb_kernel_driver_active(dev, 0) == 1) {
+		if (libusb_detach_kernel_driver(dev, 0) != 0) {
+			printf("Could not detach kernel driver.\n");
+			return 0;
+		}
+	}
+
+	if (libusb_claim_interface(dev, 0) < 0) {
+		printf("Could not claim interface.\n");
+		return 0;
+	}
+
+	em100->dev = dev;
+	em100->ctx = ctx;
+
+	if (!check_status(em100)) {
+		printf("Device status unknown.\n");
+		return 0;
+	}
+
+	if (!get_version(em100)) {
+		printf("Failed fetching version information.\n");
+		return 0;
+	}
+
+	if (!get_serialno(em100)) {
+		printf("Failed fetching serial number.\n");
+		return 0;
+	}
+
+	return 1;
+}
+
+static int em100_detach(struct em100 *em100)
+{
+	if (libusb_release_interface(em100->dev, 0) != 0) {
+		printf("releasing interface failed.\n");
+		return 1;
+	}
+
+	libusb_close(em100->dev);
+	libusb_exit(em100->ctx);
+
+	return 0;
+}
+
+static int set_chip_type(struct em100 *em100, const chipdesc *desc)
+{
+	unsigned char cmd[16];
+	/* result counts unsuccessful send_cmd()s.
+         * These are then converted in a boolean success value
+         */
+	int result = 0;
+	int i;
+
+	printf("Sending flash chip configuration\n");
+
+	memset(cmd, 0, 16);
+
+	for (i = 0; i < desc->init_len; i++) {
+		memcpy(&cmd[0], &desc->init[i][0], BYTES_PER_INIT_ENTRY);
+		result += !send_cmd(em100->dev, cmd);
+	}
+
+	return !result;
 }
 
 static const struct option longopts[] = {
