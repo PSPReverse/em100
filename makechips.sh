@@ -26,8 +26,12 @@ if ! which 7z > /dev/null; then
   echo "Install 7z (aka p7zip-full on Ubuntu, p7zip-plugins on fedora) to run this script."
   exit 1
 fi
-if ! which unrar > /dev/null; then
-  echo "Install unrar to run this script."
+if which unrar > /dev/null; then
+  UNRAR=unrar
+elif which rar > /dev/null; then
+  UNRAR=rar
+else
+  echo "Install unrar/rar to run this script."
   exit 1
 fi
 
@@ -44,10 +48,10 @@ else
   curl -s $URL -o $FILE || exit
 fi
 echo Unpacking configs...
-if ! unrar x $FILE ${FILE%.rar}.msi > /dev/null ; then
-  echo "No msi component found. Is ${URL} a correct url?" >&2
-  echo -n "check http://www.dediprog.com/download?u=42&l=EM100Pro and edit " >&2
-  echo "$0 to use the latest archive URL" >&2
+if ! $UNRAR x $FILE ${FILE%.rar}.msi > /dev/null ; then
+  echo "No msi component found. Is ${URL} a correct url? Check" >&2
+  echo -n "http://www.dediprog.com/download?u=42&l=EM100Pro+SPI+Flash+Emulator" >&2
+  echo "and edit $0 to use the latest archive URL" >&2
   rm -rf $TEMP
   exit 1
 fi
