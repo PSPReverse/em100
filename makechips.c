@@ -146,6 +146,7 @@ static int parse_and_output_config(struct dediprog_cfg_pro *cfg)
 
 	printf("\t{ /* %s %s (%d kB) */\n",
 	       vendor, chip_name, hdr->chip_size/1024);
+	printf("\t\t.vendor = \"%s\",\n", vendor);
 	printf("\t\t.name = \"%s\",\n", chip_name);
 	printf("\t\t.size = 0x%x,\n", hdr->chip_size);
 	printf("\t\t.init = {\n");
@@ -269,6 +270,7 @@ int main(int argc, char *argv[])
 	printf("#define NUM_INIT_ENTRIES %d\n", DEDIPROG_CFG_PRO_MAX_ENTRIES);
 	printf("#define BYTES_PER_INIT_ENTRY 4\n");
 	printf("typedef struct {\n");
+	printf("\tconst char *vendor;\n");
 	printf("\tconst char *name;\n");
 	printf("\tunsigned int size;\n");
 	printf("\tuint8_t init[NUM_INIT_ENTRIES][BYTES_PER_INIT_ENTRY];\n");
