@@ -24,12 +24,11 @@ em100: em100.c em100pro_chips.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $< \
 		$(shell $(PKG_CONFIG) --cflags --libs libusb-1.0)
 
-makechips: makechips.c
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $<
-
-em100pro_chips.h: makechips.sh makechips
+em100pro_chips.h: makechips.c makechips.sh
 	./makechips.sh
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o makechips $<
 	VERSION="$$(cat configs/VERSION)" ./makechips configs/*.cfg > $@
+	rm makechips
 
 clean:
 	rm -f em100
