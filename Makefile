@@ -34,6 +34,6 @@ clean:
 	rm -f em100
 
 distclean: clean
-	rm -rf configs makechips em100pro_chips.h
+	rm -rf configs makechips
 
 .PHONY: clean distclean
