@@ -27,9 +27,9 @@ em100: em100.c em100pro_chips.h
 makechips: makechips.c
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $<
 
-em100pro_chips.h: makechips
+em100pro_chips.h: makechips.sh makechips
 	./makechips.sh
-	./makechips configs/*.cfg > $@
+	VERSION="$$(cat configs/VERSION)" ./makechips configs/*.cfg > $@
 
 clean:
 	rm -f em100

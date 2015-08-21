@@ -262,11 +262,22 @@ int main(int argc, char *argv[])
 	FILE *f;
 	struct dediprog_cfg_pro *cfg;
 	const char *filename;
+	char *version;
 	int init_len = 0;
 
-	printf("\n#ifndef EM100PRO_CHIPS_H\n");
+	version=getenv("VERSION");
+	if (version && strlen(version) > 0) {
+		printf("/* EM100Pro supported chips database created from\n");
+		printf(" * Dediprog's EM100Pro utility version %s\n */\n\n",
+			version);
+	}
+	printf("#ifndef EM100PRO_CHIPS_H\n");
 	printf("#define EM100PRO_CHIPS_H\n\n");
 	printf("#include <stdint.h>\n");
+	if (version && strlen(version) > 0)
+		printf("#define VERSION \"%s\"\n", version);
+	else
+		printf("#define VERSION \"<unknown>\"\n");
 	printf("#define NUM_INIT_ENTRIES %d\n", DEDIPROG_CFG_PRO_MAX_ENTRIES);
 	printf("#define BYTES_PER_INIT_ENTRY 4\n");
 	printf("typedef struct {\n");

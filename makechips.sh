@@ -16,7 +16,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-URL=http://www.dediprog.com/save/78.rar/to/EM100Pro_4.2.24.rar
+VERSION=4.2.24
+URL=http://www.dediprog.com/save/78.rar/to/EM100Pro_${VERSION}.rar
 
 if ! which curl > /dev/null; then
   echo "Install curl to run this script."
@@ -65,6 +66,7 @@ mkdir -p $WD/configs
 for i in PRO_*; do
   cp $i $WD/configs/${i#PRO_}.cfg
 done
+echo "${VERSION}" > $WD/configs/VERSION
 cd $WD
 rm -rf $TEMP
 echo Done...
