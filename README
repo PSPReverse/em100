@@ -6,5 +6,5 @@ Usage:
 -r|--start:         em100 shall run
 -s|--stop:          em100 shall stop
 -v|--verify:        verify EM100 content matches the file
+-p|--holdpin [LOW|FLOAT|INPUT]:       set the hold pin state
 -h|--help:          this help text
-
