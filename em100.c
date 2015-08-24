@@ -925,6 +925,7 @@ int main(int argc, char **argv)
 	printf("MCU version: %d.%02d\n", em100.mcu >> 8, em100.mcu & 0xff);
 	printf("FPGA version: %d.%02d\n", em100.fpga >> 8, em100.fpga & 0xff);
 	printf("Serial number: DP%06d\n", em100.serialno);
+	printf("SPI flash database: %s\n", VERSION);
 
 	if (do_stop) {
 		set_state(&em100, 0);
