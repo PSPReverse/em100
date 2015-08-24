@@ -567,9 +567,10 @@ static int reset_spi_trace(struct em100 *em100)
  * in(8x8192 bytes): 2 bytes (BE) number of records (0..0x3ff),
  *    then records of 8 bytes each
  */
-unsigned int counter = 0;
-unsigned char curpos = 0;
-unsigned char cmdid = 0xff; // timestamp, so never a valid command id
+static unsigned int counter = 0;
+static unsigned char curpos = 0;
+static unsigned char cmdid = 0xff; // timestamp, so never a valid command id
+
 static int read_spi_trace(struct em100 *em100)
 {
 	unsigned char cmd[16];
@@ -577,9 +578,28 @@ static int read_spi_trace(struct em100 *em100)
 	unsigned int count, i, report;
 	memset(cmd, 0, 16);
 	cmd[0] = 0xbc; /* read SPI trace buffer*/
+
+	/* Trace length, unit is 4k according to specs */
+	cmd[1] = 0x00;
+	cmd[2] = 0x00;
+	cmd[3] = 0x00;
 	cmd[4] = 0x08; /* cmd1..cmd4 are probably u32BE on how many
 			  reports (8192 bytes each) to fetch */
-	cmd[9] = 0x15; /* no idea */
+	/* Timeout in ms */
+	cmd[5] = 0x00;
+	cmd[6] = 0x00;
+	cmd[7] = 0x00;
+	cmd[8] = 0x00;
+	/* Trace Config
+	 * [1:0] 00 start/stop spi trace according to emulation status
+	 *       01 start when TraceConfig[2] == 1
+	 *       10 start when trig signal goes high
+	 *       11 RFU
+	 * [2]   When TraceConfig[1:0] == 01 this bit starts the trace
+	 * [7:3] RFU
+	 */
+	cmd[9] = 0x15;
+
 	if (!send_cmd(em100->dev, cmd)) {
 		printf("sending trace command failed\n");
 		return 0;
