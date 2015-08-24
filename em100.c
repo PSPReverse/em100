@@ -350,10 +350,7 @@ static int read_spi_flash_page(struct em100 *em100, int addr, unsigned char *blk
 	}
 	int len = get_response(em100->dev, data, 256);
 
-	// FIXME are pages really effectively 255 bytes, or
-	// is this part of the format of the config page and
-	// thus the check for 255 needs to be moved to get_serialno()
-	if ((len == 256) && (data[0] == 255)) {
+	if (len == 256) {
 		memcpy(blk, data, 256);
 		return 1;
 	}
