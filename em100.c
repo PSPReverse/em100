@@ -162,8 +162,8 @@ static int get_voltage(struct em100 *em100, get_voltage_channel_t channel)
 
 typedef enum {
 	both_off = 0,
-	red_on   = 1,
-	green_on = 2,
+	green_on = 1,
+	red_on   = 2,
 	both_on  = 3
 } led_state_t;
 
