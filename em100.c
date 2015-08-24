@@ -996,7 +996,7 @@ int main(int argc, char **argv)
 		struct sigaction signal_action;
 
 		if (!set_hold_pin_state(&em100, 3)) {
-			printf("failed to set em100 to input\n");
+			printf("Error: Failed to set EM100 to input\n");
 			return 1;
 		}
 		set_state(&em100, 1);
@@ -1015,7 +1015,7 @@ int main(int argc, char **argv)
 		reset_spi_trace(&em100);
 
 		if (!set_hold_pin_state(&em100, 2)) {
-			printf("failed to set em100 to float\n");
+			printf("Error: Failed to set EM100 to float\n");
 			return 1;
 		}
 	}
