@@ -846,14 +846,14 @@ static const struct option longopts[] = {
 
 static void usage(void)
 {
-	printf("em100: em100 client utility\n\n"
-		"-c CHIP|--set CHIP: select CHIP emulation\n"
-		"-d[ownload] FILE:   upload FILE into em100\n"
-		"-r|--start:         em100 shall run\n"
-		"-s|--stop:          em100 shall stop\n"
-		"-v|--verify:        verify EM100 content matches the file\n"
-		"-p|--holdpin [LOW|FLOAT|INPUT]:       set the hold pin state\n"
-		"-h|--help:          this help text\n");
+	printf("em100: em100 client utility\n\nUsage:\n"
+		"  -c CHIP|--set CHIP: select CHIP emulation\n"
+		"  -d[ownload] FILE:   upload FILE into em100\n"
+		"  -r|--start:         em100 shall run\n"
+		"  -s|--stop:          em100 shall stop\n"
+		"  -v|--verify:        verify EM100 content matches the file\n"
+		"  -p|--holdpin [LOW|FLOAT|INPUT]:       set the hold pin state\n"
+		"  -h|--help:          this help text\n\n");
 }
 
 /* get MCU and FPGA version, *100 encoded */
