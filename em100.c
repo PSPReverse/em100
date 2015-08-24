@@ -735,6 +735,9 @@ static int check_status(struct em100 *em100)
 	int spi_flash_id;
 
 	spi_flash_id = get_spi_flash_id(em100);
+	/* Check for Micron  (formerly Numonyx, formerly STMicro)
+	 * M25P16 spi flash part
+	 */
 	if (spi_flash_id == 0x202015)
 		return 1;
 	return 0;
