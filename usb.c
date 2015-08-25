@@ -24,14 +24,16 @@ int send_cmd(libusb_device_handle *dev, void *data)
 {
 	int actual;
 	int length = 16; /* haven't seen any other length yet */
-	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT, data, length, &actual, BULK_SEND_TIMEOUT);
+	libusb_bulk_transfer(dev, 1 | LIBUSB_ENDPOINT_OUT,
+			data, length, &actual, BULK_SEND_TIMEOUT);
 	return (actual == length);
 }
 
 int get_response(libusb_device_handle *dev, void *data, int length)
 {
 	int actual;
-	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN, data, length, &actual, BULK_SEND_TIMEOUT);
+	libusb_bulk_transfer(dev, 2 | LIBUSB_ENDPOINT_IN,
+			data, length, &actual, BULK_SEND_TIMEOUT);
 	return actual;
 }
 
