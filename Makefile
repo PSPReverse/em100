@@ -16,12 +16,15 @@
 #
 
 CFLAGS?=-O2 -g
-CFLAGS+=-Wall -Werror -Wno-error=unused-function
+CFLAGS+=-Wall -Werror
 CC?=gcc
 PKG_CONFIG?=pkg-config
 
-em100: em100.c em100pro_chips.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $< \
+SOURCES=em100.c fpga.c sdram.c spi.c system.c trace.c usb.c
+INCLUDES=em100pro_chips.h em100.h
+
+em100: $(SOURCES) $(INCLUDES)
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(SOURCES) \
 		$(shell $(PKG_CONFIG) --cflags --libs libusb-1.0)
 
 em100pro_chips.h: makechips.c makechips.sh
