@@ -138,7 +138,23 @@ int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data)
 	return (bytes_sent == length);
 }
 
-/* SPI HyperTerminal related operations */
+/* SPI Hyper Terminal related operations */
+
+/* SPI Hyper Terminal resources:
+ *
+ * FIFOs:
+ * dFIFO    64 bytes   Transfer information from host to application (EM100Pro)
+ * uFIFO   512 bytes   Transfer information from application to host
+ *
+ * Registers:
+ *   0    1 byte   RW  FIFO overflow, pause/start emulation, FIFO valid data
+ *   1    1 byte   RO  length of valid data in dFIFO
+ *   2    1 byte   RO  length of valid data in uFIFO (?? in 1 byte ??)
+ *   3    1 byte   RO  EM100 identification on SPI bus to differentiate from
+ *                     real SPI flash
+ *   4    1 byte   RW  uFIFO data format to indicate to the software how to
+ *                     read the data
+ */
 
 /**
  * read_ht_register: Read HT registers
@@ -183,4 +199,82 @@ int write_ht_register(struct em100 *em100, int reg, uint8_t val)
 		return 0;
 	}
 	return 1;
+}
+
+int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout, unsigned char *blk)
+{
+	int actual;
+	int bytes_sent=0;
+	int bytes_left;
+	unsigned char cmd[16];
+	unsigned char data[512];
+
+	if (length > 512) { /* Really? Should be 64? */
+		printf("Error: Length of data to be written to dFIFO can't be > 512\n");
+		return 0;
+	}
+	memset(cmd, 0, 16);
+	cmd[0] = 0x52; /* write dFIFO */
+	cmd[1] = (length >> 8)  & 0xff;
+	cmd[2] = length & 0xff;
+	cmd[3] = (timeout >> 8)  & 0xff;
+	cmd[4] = timeout & 0xff;
+
+	if (!send_cmd(em100->dev, cmd)) {
+		printf("Error: Could not initiate host-to-EM100 transfer.\n");
+		return 0;
+	}
+
+	while ( bytes_sent < length) {
+		actual = 0;
+
+		bytes_left = length - bytes_sent;
+
+		libusb_bulk_transfer(em100->dev, 1 | LIBUSB_ENDPOINT_OUT,
+			data + bytes_sent, bytes_left, &actual, BULK_SEND_TIMEOUT);
+		bytes_sent += actual;
+		if (actual < bytes_left) {
+			printf("Tried sending %d bytes, sent %d\n", bytes_left, actual);
+			break;
+		}
+
+		printf("Sent %d bytes of %d\n", bytes_sent, length);
+	}
+
+	printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");
+	return (bytes_sent == length);
+
+	int len = get_response(em100->dev, data, 512);
+
+	if (len == 1 && data[0] == length) {
+		return 1;
+	}
+	return 0;
+}
+
+int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout, unsigned char *blk)
+{
+	unsigned char cmd[16];
+	unsigned char data[512];
+
+	if (length > 512) {
+		printf("Error: Length of data to be read from uFIFO can't be > 512\n");
+		return 0;
+	}
+	memset(cmd, 0, 16);
+	cmd[0] = 0x53; /* read uFIFO */
+	cmd[1] = (length >> 8)  & 0xff;
+	cmd[2] = length & 0xff;
+	cmd[3] = (timeout >> 8)  & 0xff;
+	cmd[4] = timeout & 0xff;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	int len = get_response(em100->dev, data, 512);
+
+	if (len == length) {
+		memcpy(blk, data, length);
+		return 1;
+	}
+	return 0;
 }

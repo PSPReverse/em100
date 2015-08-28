@@ -53,6 +53,10 @@ int read_spi_flash_page(struct em100 *em100, int addr, unsigned char *blk);
 int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data);
 int read_ht_register(struct em100 *em100, int reg, uint8_t *val);
 int write_ht_register(struct em100 *em100, int reg, uint8_t val);
+int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout,
+		unsigned char *blk);
+int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout,
+		unsigned char *blk);
 
 /* system.c */
 typedef enum {
