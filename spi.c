@@ -84,7 +84,7 @@ int read_spi_flash_page(struct em100 *em100, int addr, unsigned char *blk)
 	unsigned char cmd[16];
 	unsigned char data[256];
 	memset(cmd, 0, 16);
-	cmd[0] = 0x33; /* read configuration block */
+	cmd[0] = 0x33; /* read SPI flash page */
 	cmd[1] = (addr >> 16) & 0xff;
 	cmd[2] = (addr >> 8)  & 0xff;
 	cmd[3] = addr & 0xff;
