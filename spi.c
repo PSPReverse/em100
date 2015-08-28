@@ -114,7 +114,7 @@ int write_spi_flash_page(struct em100 *em100, unsigned char *data, int address)
 	cmd[4] = address & 0xff;
 
 	if (!send_cmd(em100->dev, cmd)) {
-		printf("error initiating host-to-em100 transfer.\n");
+		printf("Error: Could not initiate host-to-EM100 transfer.\n");
 		return 0;
 	}
 
