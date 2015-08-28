@@ -119,6 +119,54 @@ static int get_serialno(struct em100 *em100)
 	return 0;
 }
 
+static int set_serialno(struct em100 *em100, unsigned int serialno)
+{
+	unsigned char data[512];
+	unsigned int old_serialno;
+
+	if (!read_spi_flash_page(em100, 0x1fff00, data))
+		return 0;
+
+	old_serialno = (data[5] << 24) | (data[4] << 16) | \
+		       (data[3] << 8) | data[2];
+
+	if (old_serialno == serialno) {
+		printf("Serial number unchanged.\n");
+		return 1;
+	}
+
+	data[2] = serialno;
+	data[3] = serialno >> 8;
+	data[4] = serialno >> 16;
+	data[5] = serialno >> 24;
+
+	if (old_serialno != 0xffffffff) {
+		/* preserve magic */
+		read_spi_flash_page(em100, 0x1f0000, data + 256);
+		/* Unlock and erase sector. Reading
+		 * the SPI flash ID is requires to
+		 * actually unlock the chip.
+		 */
+		unlock_spi_flash(em100);
+		get_spi_flash_id(em100);
+		erase_spi_flash_sector(em100, 0x1f);
+		/* write back magic */
+		write_spi_flash_page(em100, 0x1f0000, data + 256);
+	}
+
+	if (!write_spi_flash_page(em100, 0x1fff00, data)) {
+		printf("Error: Could not write SPI flash.\n");
+		return 0;
+	}
+	get_serialno(em100);
+	if (em100->serialno != 0xffffffff)
+		printf("New serial number: DP%06d\n", em100->serialno);
+	else
+		printf("New serial number: N.A.\n");
+
+	return 1;
+}
+
 static int check_status(struct em100 *em100)
 {
 	int spi_flash_id;
@@ -264,6 +312,7 @@ static const struct option longopts[] = {
 	{"verify", 0, 0, 'v'},
 	{"holdpin", 1, 0, 'p'},
 	{"help", 0, 0, 'h'},
+	{"set-serialno", 1, 0, 'S'},
 	{NULL, 0, 0, 0}
 };
 
@@ -284,11 +333,12 @@ int main(int argc, char **argv)
 {
 	int opt, idx;
 	const char *desiredchip = NULL;
+	const char *serialno = NULL;
 	const char *filename = NULL;
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
         int verify = 0, trace = 0;
-	while ((opt = getopt_long(argc, argv, "c:d:p:rsvht",
+	while ((opt = getopt_long(argc, argv, "c:d:p:rsvhtS",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -312,6 +362,9 @@ int main(int argc, char **argv)
 			break;
 		case 't':
 			trace = 1;
+			break;
+		case 'S':
+			serialno = optarg;
 			break;
 		case 'h':
 			usage();
@@ -366,6 +419,17 @@ int main(int argc, char **argv)
 	else
 		printf("Serial number: N.A.\n");
 	printf("SPI flash database: %s\n", VERSION);
+
+	if (serialno) {
+		unsigned int serial_number;
+		if (sscanf(serialno, "%d", &serial_number) != 1)
+			printf("Error: Can't parse serial number '%s'\n",
+					serialno);
+		else
+			set_serialno(&em100, serial_number);
+
+		return em100_detach(&em100);
+	}
 
 	if (do_stop) {
 		set_state(&em100, 0);
