@@ -100,7 +100,7 @@ int read_spi_flash_page(struct em100 *em100, int addr, unsigned char *blk)
 	return 0;
 }
 
-int write_spi_flash_page(struct em100 *em100, unsigned char *data, int address)
+int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data)
 {
 	int length = 256;
 	int actual;
