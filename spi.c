@@ -138,6 +138,47 @@ int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data)
 	return (bytes_sent == length);
 }
 
+int unlock_spi_flash(struct em100 *em100)
+{
+	unsigned char cmd[16];
+	memset(cmd, 0, 16);
+	cmd[0] = 0x36; /* Unlock SPI flash */
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	/* Specification says to wait 5s before
+	 * issuing another USB command
+	 */
+	return 1;
+}
+
+/* Erase SPI flash sector
+ * There are 32 sectors 64kB each
+ *
+ */
+int erase_spi_flash_sector(struct em100 *em100, unsigned int sector)
+{
+	unsigned char cmd[16];
+
+	if (sector > 31) {
+		printf("Can't erase sector at address %x\n", sector << 16);
+		return 0;
+	}
+
+	memset(cmd, 0, 16);
+	cmd[0] = 0x37; /* Erase SPI flash sector */
+	cmd[1] = sector;
+	if (!send_cmd(em100->dev, cmd)) {
+		return 0;
+	}
+	/* Specification says to wait 5s before
+	 * issuing another USB command
+	 */
+	return 1;
+
+}
+
+
 /* SPI Hyper Terminal related operations */
 
 /* SPI Hyper Terminal resources:

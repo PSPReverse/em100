@@ -256,6 +256,33 @@ USB Out for data:
 |------------- |
 | 256Byte Data |
 
+### 3.6. ?? Unprotect SPI flash ??
+
+USB Out:
+
+| Command | Parameter | Data |
+|---------|-----------|------|
+| 0x36    | None      | None |
+
+USB In:
+
+```NONE```
+
+### 3.6. Erase SPI flash sector:
+
+USB Out:
+| Command | Parameter    | Data |
+|---------|--------------|------|
+| 0x37    | SectorNo(1B) | None |
+
+USB In:
+
+```NONE```
+
+```
+SectorNo: Sector number (0..31). Sectors are 64k
+```
+
 
 ## 4. SDRAM related operations:
 
