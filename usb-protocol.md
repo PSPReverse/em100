@@ -228,22 +228,7 @@ USB In:
 
 ```Status: 0 if busy, 1 if ready```
 
-### 3.4. Program SPI flash Page
-
-USB Out for command:
-
-| Command | Parameter    | Data |
-|---------|--------------|------|
-| 0x34    | Address (3B) | None |
-
-USB Out for data:
-
-| Data         |
-|------------- |
-| 256Byte Data |
-
-
-### 3.5. Read SPI flash Page
+### 3.4. Read SPI flash Page
 
 USB Out:
 
@@ -256,6 +241,20 @@ USB In:
 | Result | Data                  |
 |--------|-----------------------|
 | None   | SPI flash data (256B) |
+
+### 3.5. Program SPI flash Page
+
+USB Out for command:
+
+| Command | Parameter    | Data |
+|---------|--------------|------|
+| 0x34    | Address (3B) | None |
+
+USB Out for data:
+
+| Data         |
+|------------- |
+| 256Byte Data |
 
 
 ## 4. SDRAM related operations:
