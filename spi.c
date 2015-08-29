@@ -109,9 +109,9 @@ int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data)
 	unsigned char cmd[16];
 	memset(cmd, 0, 16);
 	cmd[0] = 0x34; /* host-to-em100 eeprom data */
-	cmd[2] = (address >> 16) & 0xff;
-	cmd[3] = (address >> 8) & 0xff;
-	cmd[4] = address & 0xff;
+	cmd[1] = (address >> 16) & 0xff;
+	cmd[2] = (address >> 8) & 0xff;
+	cmd[3] = address & 0xff;
 
 	if (!send_cmd(em100->dev, cmd)) {
 		printf("Error: Could not initiate host-to-EM100 transfer.\n");
