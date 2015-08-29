@@ -9,9 +9,9 @@
 
 *USB command output length is always 16B;*
 
-## System Level Operations
+## 1. System Level Operations
 
-### 1. Get Firmware / FPGA version
+### 1.1. Get Firmware / FPGA version
 
 USB Out:
 | Command | Parameter | Data |
@@ -30,7 +30,7 @@ FPGA_Ver: FPGA version
 MCU_Ver: MCU version
 ```
 
-### 2. Set Voltage
+### 1.2. Set Voltage
 
 USB Out:
 
@@ -55,7 +55,7 @@ Value:
 
 The value unit is 1mV. For Buffer VCC, there’s only three steps: 1.8V 2.5V and 3.3V
 
-### 3. Measure Voltage
+### 1.3. Measure Voltage
 
 USB Out:
 
@@ -89,7 +89,7 @@ DCNT: Data count; 0 if fail, 2 if pass
 
 Value:
 
-### 4. Set LED
+### 1.4. Set LED
 
 USB Out:
 | Command | Parameter      | Data |
@@ -108,9 +108,9 @@ LED State:
 3: Both on
 ```
 
-## FPGA related operations
+## 2. FPGA related operations
 
-### 5. Reconfig FPGA:
+### 2.1. Reconfig FPGA:
 
 USB Out:
 | Command | Parameter | Data |
@@ -126,7 +126,7 @@ Note: Please wait 2 seconds to issue any other USB commands after this command
 ```
 
 
-### 6. Check FPGA configuration status:
+### 2.2. Check FPGA configuration status:
 
 USB Out:
 | Command | Parameter | Data |
@@ -145,7 +145,7 @@ USB In:
 Pass: 1, Fail: 0
 ````
 
-### 7. Read FPGA Registers
+### 2.3. Read FPGA Registers
 
 USB Out:
 | Command | Parameter    | Data |
@@ -163,7 +163,7 @@ DCNT: Data count, 0: read fail, 2: read success
 Value: Register Value
 ```
 
-### 8. Reconfig FPGA:
+### 2.4. Reconfig FPGA:
 
 USB Out:
 | Command | Parameter   | Data      |
@@ -179,9 +179,9 @@ RegAddr: Register Address
 Value: Register Value
 ```
 
-## SPI flash related operations:
+## 3. SPI flash related operations:
 
-### 9. Get SPI flash ID
+### 3.1. Get SPI flash ID
 
 USB Out:
 
@@ -197,7 +197,7 @@ USB In:
 
 ```ID: SPI flash ID```
 
-### 10.Erase SPI flash
+### 3.2. Erase SPI flash
 
 USB Out:
 
@@ -211,7 +211,7 @@ USB In:
 
 ```Note: please don’t send any other USB command after this command in 5 seconds```
 
-### 11.Poll SPI flash status
+### 3.3. Poll SPI flash status
 
 USB Out:
 
@@ -228,7 +228,7 @@ USB In:
 
 ```Status: 0 if busy, 1 if ready```
 
-### 12.Program SPI flash Page
+### 3.4. Program SPI flash Page
 
 USB Out for command:
 
@@ -243,7 +243,7 @@ USB Out for data:
 | 256Byte Data |
 
 
-### 13.Read SPI flash Page
+### 3.5. Read SPI flash Page
 
 USB Out:
 
@@ -258,9 +258,9 @@ USB In:
 | None   | SPI flash data (256B) |
 
 
-## SDRAM related operations:
+## 4. SDRAM related operations:
 
-### 14.Write SDRAM
+### 4.1. Write SDRAM
 
 USB Out for command:
 
@@ -274,7 +274,7 @@ USB Out for data:
 |-----------------------------|
 | Data to be written to SDRAM |
 
-### 15.Read SDRAM
+### 4.2. Read SDRAM
 
 USB Out:
 
@@ -289,9 +289,9 @@ USB In:
 | None   |Data read from SDRAM |
 
 
-## SPI Hyperterminal related operations:
+## 5. SPI Hyperterminal related operations:
 
-### 16.Read HT Registers
+### 5.1. Read HT Registers
 
 USB Out:
 
@@ -311,7 +311,7 @@ DCNT: Data count, 0: read fail, 1: read success
 Value: Register Value
 ```
 
-### 17.Write HT Registers
+### 5.2. Write HT Registers
 
 USB Out:
 
@@ -328,7 +328,7 @@ RegAddress: Register Address
 Value: Register Value
 ```
 
-### 18.Write dFIFO
+### 5.3. Write dFIFO
 
 USB Out for Command:
 
@@ -353,7 +353,7 @@ Timeout: timeout for MCU to write these data to the FPGA dFIFO, unit is ms.
 DCNT: number of bytes successfully written to dFIFO.
 ```
 
-### 19.Read uFIFO
+### 5.4. Read uFIFO
 
 USB Out for Command:
 
@@ -373,9 +373,9 @@ Timeout: timeout for MCU to read data from the FPGA uFIFO, unit is ms.
 DCNT: number of bytes successfully read from uFIFO.
 ```
 
-## SPI Trace related operations:
+## 6. SPI Trace related operations:
 
-### 20.Get SPI Trace
+### 6.1. Get SPI Trace
 
 USB Out:
 
@@ -407,7 +407,7 @@ USB In:
 The MCU will try to read SPI trace data from FPGA and resend the data to PC. The data length of each transfer is 4KB. If the MCU can not collect 4KB data from FPGA in the time defined by Timeout value, it will stop waiting and padding the 4KB data with all 00 and send it to USB.
 
 
-### 21.Reset SPI Trace
+### 6.2. Reset SPI Trace
 
 USB Out:
 
