@@ -130,11 +130,11 @@ int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data)
 			printf("Tried sending %d bytes, sent %d\n", bytes_left, actual);
 			break;
 		}
-
-		printf("Sent %d bytes of %d\n", bytes_sent, length);
 	}
 
-	printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");
+	if (bytes_sent != length)
+		printf ("SPI transfer failed\n");
+
 	return (bytes_sent == length);
 }
 
