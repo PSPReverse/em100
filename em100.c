@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <signal.h>
 #include <getopt.h>
 #include "em100.h"
@@ -375,7 +376,7 @@ int main(int argc, char **argv)
 	const chipdesc *chip = chips;
 	if (desiredchip) {
 		do {
-			if (strcmp(desiredchip, chip->name) == 0) {
+			if (strcasecmp(desiredchip, chip->name) == 0) {
 				printf("will emulate '%s'\n", chip->name);
 				break;
 			}
