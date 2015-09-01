@@ -415,6 +415,7 @@ static const struct option longopts[] = {
 	{"set-serialno", 1, 0, 'S'},
 	{"firmware-update", 1, 0, 'F'},
 	{"firmware-dump", 1, 0, 'f'},
+	{"firmware-write", 1, 0, 'g'},
 	{"device", 1, 0, 'x'},
 	{"list-devices", 0, 0, 'l'},
 	{NULL, 0, 0, 0}
@@ -431,8 +432,9 @@ static void usage(char *name)
 		"  -s|--stop:          em100 shall stop\n"
 		"  -v|--verify:        verify EM100 content matches the file\n"
 		"  -t|--trace:         trace mode\n"
-		"  -F|--firmware-update FILE: update firmware in EM100pro (dangerous)\n"
-		"  -f|--firmware-dump FILE:   export firmware in EM100pro to file\n"
+		"  -F|--firmware-update FILE: update EM100pro firmware (dangerous)\n"
+		"  -f|--firmware-dump FILE:   export raw EM100pro firmware to file\n"
+		"  -g|--firmware-write FILE:  export EM100pro firmware to DPFW file\n"
 		"  -S|--set-serialno NUM:     set serial number to NUM\n"
 		"  -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state\n"
 		"  -x|--device BUS:DEV use EM100pro on USB bus/device\n"
@@ -454,7 +456,8 @@ int main(int argc, char **argv)
 	int verify = 0, trace = 0;
 	int debug = 0;
 	int bus = 0, device = 0;
-	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:S:p:Dx:lh",
+	int firmware_is_dpfw = 0;
+	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:g:S:p:Dx:lh",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -489,6 +492,10 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			firmware_out = optarg;
+			break;
+		case 'g':
+			firmware_out = optarg;
+			firmware_is_dpfw = 1;
 			break;
 		case 'x':
 			sscanf(optarg, "%d:%d", &bus, &device);
@@ -560,7 +567,7 @@ int main(int argc, char **argv)
 	}
 
 	if (firmware_out) {
-		firmware_dump(&em100, firmware_out);
+		firmware_dump(&em100, firmware_out, firmware_is_dpfw);
 		return em100_detach(&em100);
 	}
 

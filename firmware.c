@@ -67,7 +67,15 @@ static uint32_t get_le32(const unsigned char *in)
 	return (in[3] << 24) | (in[2] << 16) | (in[1] << 8) | (in[0] << 0);
 }
 
-int firmware_dump(struct em100 *em100, const char *filename)
+static void put_le32(unsigned char *out, uint32_t val)
+{
+	out[0] = val&0xff;
+	out[1] = (val>>8)&0xff;
+	out[2] = (val>>16)&0xff;
+	out[3] = (val>>24)&0xff;
+}
+
+int firmware_dump(struct em100 *em100, const char *filename, int firmware_is_dpfw)
 {
 #define ROM_SIZE (2*1024*1024)
 	unsigned char data[ROM_SIZE];
@@ -87,11 +95,64 @@ int firmware_dump(struct em100 *em100, const char *filename)
 	}
 	print_progress(100);
 	fw = fopen(filename, "wb");
-	if (fw) {
+	if (!fw) {
+		perror(filename);
+		return 0;
+	}
+
+	if (firmware_is_dpfw) {
+		int fpga_size = 0, mcu_size = 0;
+		char *all_ff[256];
+		char mcu_version[8];
+		char fpga_version[8];
+		unsigned char header[0x100];
+
+		memset(all_ff, 255, 256);
+		for (i = 0; i < 0x100000; i+=0x100) {
+			if (memcmp(data+i, all_ff, 256) == 0)
+				break;
+		}
+		if (i == 0x100000) {
+			printf("Can't parse device firmware. Please extract"
+					" raw firmware instead.\n");
+			exit(1);
+		}
+		fpga_size = i;
+
+		for (i = 0; i < 0xfff00; i+=0x100) {
+			if (memcmp(data+0x100100+i, all_ff, 256) == 0)
+				break;
+		}
+		if (i == 0xfff00) {
+			printf("Can't parse device firmware. Please extract"
+					" raw firmware instead.\n");
+			exit(1);
+		}
+		mcu_size = i;
+
+		snprintf(mcu_version, 8, "%d.%d",
+				em100->mcu >> 8, em100->mcu & 0xff);
+		snprintf(fpga_version, 8, "%d.%d",
+				em100->fpga >> 8 & 0x7f, em100->fpga & 0xff);
+
+		memset(header, 0, 0x100);
+		memcpy(header, "em100pro", 8);
+		memcpy(header + 0x28, "WFPD", 4);
+		memcpy(header + 0x14, mcu_version, 4);
+		memcpy(header + 0x1e, fpga_version, 4);
+		put_le32(header + 0x38, 0x100);
+		put_le32(header + 0x3c, fpga_size);
+		put_le32(header + 0x40, 0x100 + fpga_size);
+		put_le32(header + 0x44, 0x100 + mcu_size);
+		fwrite(header, 0x100, 1, fw);
+		fwrite(data, fpga_size, 1, fw);
+		fwrite(data + 0x100100, mcu_size, 1, fw);
+	} else {
 		if (fwrite(data, ROM_SIZE, 1, fw) != 1)
 			printf("ERROR: Couldn't write %s\n", filename);
-		fclose(fw);
 	}
+	fclose(fw);
+
 #if DEBUG
 	hexdump(data, ROM_SIZE);
 #endif

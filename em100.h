@@ -35,7 +35,7 @@ int send_cmd(libusb_device_handle *dev, void *data);
 int get_response(libusb_device_handle *dev, void *data, int length);
 
 /* firmware.c */
-int firmware_dump(struct em100 *em100, const char *filename);
+int firmware_dump(struct em100 *em100, const char *filename, int firmware_is_dpfw);
 int firmware_update(struct em100 *em100, const char *filename, int verify);
 
 /* fpga.c */
