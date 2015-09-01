@@ -314,6 +314,8 @@ static const struct option longopts[] = {
 	{"holdpin", 1, 0, 'p'},
 	{"help", 0, 0, 'h'},
 	{"set-serialno", 1, 0, 'S'},
+	{"firmware-update", 1, 0, 'F'},
+	{"firmware-dump", 1, 0, 'f'},
 	{NULL, 0, 0, 0}
 };
 
@@ -325,6 +327,8 @@ static void usage(void)
 		"  -r|--start:         em100 shall run\n"
 		"  -s|--stop:          em100 shall stop\n"
 		"  -v|--verify:        verify EM100 content matches the file\n"
+		"  -F|--firmware-update FILE: update firmware in EM100pro (dangerous)\n"
+		"  -f|--firmware-dump FILE: export firmware in EM100pro to file\n"
 		"  -p|--holdpin [LOW|FLOAT|INPUT]:       set the hold pin state\n"
 		"  -h|--help:          this help text\n\n");
 }
@@ -336,10 +340,11 @@ int main(int argc, char **argv)
 	const char *desiredchip = NULL;
 	const char *serialno = NULL;
 	const char *filename = NULL;
+	const char *firmware_in = NULL, *firmware_out = NULL;
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
-        int verify = 0, trace = 0;
-	while ((opt = getopt_long(argc, argv, "c:d:p:rsvhtS",
+	int verify = 0, trace = 0;
+	while ((opt = getopt_long(argc, argv, "c:d:p:rsvhtSF:f:",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -366,6 +371,12 @@ int main(int argc, char **argv)
 			break;
 		case 'S':
 			serialno = optarg;
+			break;
+		case 'F':
+			firmware_in = optarg;
+			break;
+		case 'f':
+			firmware_out = optarg;
 			break;
 		case 'h':
 			usage();
@@ -420,6 +431,16 @@ int main(int argc, char **argv)
 	else
 		printf("Serial number: N.A.\n");
 	printf("SPI flash database: %s\n", VERSION);
+
+	if (firmware_in) {
+		firmware_update(&em100, firmware_in, verify);
+		return em100_detach(&em100);
+	}
+
+	if (firmware_out) {
+		firmware_dump(&em100, firmware_out);
+		return em100_detach(&em100);
+	}
 
 	if (serialno) {
 		unsigned int serial_number;
