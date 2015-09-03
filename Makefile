@@ -20,7 +20,7 @@ CFLAGS+=-Wall -Werror
 CC?=gcc
 PKG_CONFIG?=pkg-config
 
-SOURCES=em100.c firmware.c fpga.c sdram.c spi.c system.c trace.c usb.c
+SOURCES=em100.c firmware.c fpga.c hexdump.c sdram.c spi.c system.c trace.c usb.c
 INCLUDES=em100pro_chips.h em100.h
 
 em100: $(SOURCES) $(INCLUDES)

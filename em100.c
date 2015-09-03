@@ -168,6 +168,41 @@ static int set_serialno(struct em100 *em100, unsigned int serialno)
 	return 1;
 }
 
+static int em100_debug(struct em100 *em100)
+{
+	int i;
+	printf("\nVoltages:\n");
+	set_led(em100, both_off);
+	printf("  1.2V:        %dmV\n", get_voltage(em100, in_v1_2));
+	printf("  E_VCC:       %dmV\n", get_voltage(em100, in_e_vcc));
+	set_led(em100, both_on);
+	printf("  REF+:        %dmV\n", get_voltage(em100, in_ref_plus));
+	printf("  REF-:        %dmV\n", get_voltage(em100, in_ref_minus));
+	set_led(em100, red_on);
+	printf("  Buffer VCC:  %dmV\n", get_voltage(em100, in_buffer_vcc));
+	printf("  Trig VCC:    %dmV\n", get_voltage(em100, in_trigger_vcc));
+	set_led(em100, both_on);
+	printf("  RST VCC:     %dmV\n", get_voltage(em100, in_reset_vcc));
+	printf("  3.3V:        %dmV\n", get_voltage(em100, in_v3_3));
+	set_led(em100, red_on);
+	printf("  Buffer 3.3V: %dmV\n", get_voltage(em100, in_buffer_v3_3));
+	printf("  5V:          %dmV\n", get_voltage(em100, in_v5));
+	set_led(em100, green_on);
+	printf("\nFPGA registers:");
+	for (i = 0; i < 256; i += 2) {
+		uint16_t val;
+		if ((i % 16) == 0)
+			printf("\n  %04x: ", i);
+		if (read_fpga_register(em100, i, &val))
+			printf("%04x ", val);
+		else
+			printf("XXXX ");
+	}
+
+	printf("\n");
+	return 1;
+}
+
 static int check_status(struct em100 *em100)
 {
 	int spi_flash_id;
@@ -312,6 +347,7 @@ static const struct option longopts[] = {
 	{"stop", 0, 0, 's'},
 	{"verify", 0, 0, 'v'},
 	{"holdpin", 1, 0, 'p'},
+	{"debug", 0, 0, 'D'},
 	{"help", 0, 0, 'h'},
 	{"set-serialno", 1, 0, 'S'},
 	{"firmware-update", 1, 0, 'F'},
@@ -330,6 +366,7 @@ static void usage(void)
 		"  -F|--firmware-update FILE: update firmware in EM100pro (dangerous)\n"
 		"  -f|--firmware-dump FILE: export firmware in EM100pro to file\n"
 		"  -p|--holdpin [LOW|FLOAT|INPUT]:       set the hold pin state\n"
+		"  -D|--debug:         print debug information.\n"
 		"  -h|--help:          this help text\n\n");
 }
 
@@ -344,7 +381,8 @@ int main(int argc, char **argv)
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
 	int verify = 0, trace = 0;
-	while ((opt = getopt_long(argc, argv, "c:d:p:rsvhtSF:f:",
+	int debug=0;
+	while ((opt = getopt_long(argc, argv, "c:d:p:rsvhtSDF:f:",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -371,6 +409,8 @@ int main(int argc, char **argv)
 			break;
 		case 'S':
 			serialno = optarg;
+		case 'D':
+			debug=1;
 			break;
 		case 'F':
 			firmware_in = optarg;
@@ -431,6 +471,9 @@ int main(int argc, char **argv)
 	else
 		printf("Serial number: N.A.\n");
 	printf("SPI flash database: %s\n", VERSION);
+	if(debug) {
+		em100_debug(&em100);
+	}
 
 	if (firmware_in) {
 		firmware_update(&em100, firmware_in, verify);

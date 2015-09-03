@@ -44,6 +44,9 @@ int check_fpga_status(struct em100 *em100);
 int read_fpga_register(struct em100 *em100, int reg, uint16_t *val);
 int write_fpga_register(struct em100 *em100, int reg, int val);
 
+/* hexdump.c */
+void hexdump(const void *memory, size_t length);
+
 /* sdram.c */
 int read_sdram(struct em100 *em100, void *data, int address, int length);
 int write_sdram(struct em100 *em100, unsigned char *data, int address,
