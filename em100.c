@@ -216,9 +216,8 @@ static int check_status(struct em100 *em100)
 	return 0;
 }
 
-static int em100_attach(struct em100 *em100)
+static int em100_attach(struct em100 *em100, int bus, int device)
 {
-	libusb_device **devs;
 	libusb_device_handle *dev;
 	libusb_context *ctx = NULL;
 
@@ -229,18 +228,41 @@ static int em100_attach(struct em100 *em100)
 
 	libusb_set_debug(ctx, 3);
 
-	if (libusb_get_device_list(ctx, &devs) < 0) {
-		printf("Could not find USB devices.\n");
-		return 0;
+	if (!bus || !device) {
+		dev = libusb_open_device_with_vid_pid(ctx, 0x4b4, 0x1235);
+	} else {
+		libusb_device **devs, *d;
+		int i;
+
+		if (libusb_get_device_list(ctx, &devs) < 0) {
+			printf("Could not find USB devices.\n");
+			return 0;
+		}
+
+		for (i = 0; (d = devs[i]) != NULL; i++) {
+			if ((bus > 0 && (libusb_get_bus_number(d) == bus)) &&
+				(device > 0 && (libusb_get_device_address(d) == device))) {
+				struct libusb_device_descriptor desc;
+				libusb_get_device_descriptor(d, &desc);
+				if (desc.idVendor == 0x4b4 && desc.idProduct == 0x1235) {
+					if (libusb_open(d, &dev)) {
+						printf("Couldn't open EM100pro device.\n");
+						return 0;
+					}
+				} else {
+					printf("USB device on bus %03d:%02d is not an EM100pro.\n", bus, device);
+					return 0;
+				}
+				break;
+			}
+		}
+		libusb_free_device_list(devs, 1);
 	}
 
-	dev = libusb_open_device_with_vid_pid(ctx, 0x4b4, 0x1235);
 	if (!dev) {
-		printf("Could not find em100pro.\n");
+		printf("Could not find EM100pro.\n");
 		return 0;
 	}
-
-	libusb_free_device_list(devs, 1);
 
 	if (libusb_kernel_driver_active(dev, 0) == 1) {
 		if (libusb_detach_kernel_driver(dev, 0) != 0) {
@@ -387,6 +409,7 @@ int main(int argc, char **argv)
 	int do_start = 0, do_stop = 0;
 	int verify = 0, trace = 0;
 	int debug = 0;
+	int bus = 0, device = 0;
 	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:S:p:Dh",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
@@ -452,7 +475,7 @@ int main(int argc, char **argv)
 	}
 
 	struct em100 em100;
-	if (!em100_attach(&em100)) {
+	if (!em100_attach(&em100, bus, device)) {
 		return 1;
 	}
 
