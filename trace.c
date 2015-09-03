@@ -56,6 +56,7 @@ int read_spi_trace(struct em100 *em100)
 	unsigned char cmd[16];
 	unsigned char data[8192];
 	unsigned int count, i, report;
+	static int outbytes = 0;
 	memset(cmd, 0, 16);
 	cmd[0] = 0xbc; /* read SPI trace buffer*/
 
@@ -84,6 +85,7 @@ int read_spi_trace(struct em100 *em100)
 		printf("sending trace command failed\n");
 		return 0;
 	}
+
 	for (report = 0; report < 8; report++) {
 		memset(data, 0, sizeof(data));
 		int len = get_response(em100->dev, data, sizeof(data));
@@ -121,12 +123,18 @@ int read_spi_trace(struct em100 *em100)
 				cmdid = cmd;
 				printf("\nspi command %6d: ", ++counter);
 				curpos = 0;
+				outbytes = 0;
 			}
 			/* this exploits 8bit wrap around in curpos */
 			unsigned char blocklen = (data[2 + i*8 + 1] - curpos);
 			blocklen /= 8;
 			for (j = 0; j < blocklen; j++) {
 				printf("%02x ", data[2 + i*8 + 2 + j]);
+				outbytes++;
+				if (outbytes == 16) {
+					outbytes=0;
+					printf("\n                    ");
+				}
 			}
 			curpos = data[2 + i*8 + 1] + 0x10; // this is because the em100 counts funny
 		}
