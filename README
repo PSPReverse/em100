@@ -1,12 +1,19 @@
-A simple utility to control a Dediprog EM100 from Linux.
+em100: EM100pro command line utility
+
+Example:
+  ./em100 --stop --set M25P80 -d file.bin -v --start
 
 Usage:
-  -c CHIP|--set CHIP: select CHIP emulation
-  -d[ownload] FILE:   upload FILE into em100
+  -c|--set CHIP:      select chip emulation
+  -d|--download FILE: upload FILE into EM100pro
   -r|--start:         em100 shall run
   -s|--stop:          em100 shall stop
   -v|--verify:        verify EM100 content matches the file
+  -t|--trace:         trace mode
   -F|--firmware-update FILE: update firmware in EM100pro (dangerous)
-  -f|--firmware-dump FILE: export firmware in EM100pro to file
-  -p|--holdpin [LOW|FLOAT|INPUT]:       set the hold pin state
+  -f|--firmware-dump FILE:   export firmware in EM100pro to file
+  -S|--set-serialno NUM:     set serial number to NUM
+  -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state
+  -D|--debug:         print debug information.
   -h|--help:          this help text
+

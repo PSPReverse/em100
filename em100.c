@@ -349,25 +349,30 @@ static const struct option longopts[] = {
 	{"holdpin", 1, 0, 'p'},
 	{"debug", 0, 0, 'D'},
 	{"help", 0, 0, 'h'},
+	{"trace", 0, 0, 't'},
 	{"set-serialno", 1, 0, 'S'},
 	{"firmware-update", 1, 0, 'F'},
 	{"firmware-dump", 1, 0, 'f'},
 	{NULL, 0, 0, 0}
 };
 
-static void usage(void)
+static void usage(char *name)
 {
-	printf("em100: em100 client utility\n\nUsage:\n"
-		"  -c CHIP|--set CHIP: select CHIP emulation\n"
-		"  -d[ownload] FILE:   upload FILE into em100\n"
+	printf("em100: EM100pro command line utility\n\nExample:\n"
+		"  %s --stop --set M25P80 -d file.bin -v --start\n"
+		"\nUsage:\n"
+		"  -c|--set CHIP:      select chip emulation\n"
+		"  -d|--download FILE: upload FILE into EM100pro\n"
 		"  -r|--start:         em100 shall run\n"
 		"  -s|--stop:          em100 shall stop\n"
 		"  -v|--verify:        verify EM100 content matches the file\n"
+		"  -t|--trace:         trace mode\n"
 		"  -F|--firmware-update FILE: update firmware in EM100pro (dangerous)\n"
-		"  -f|--firmware-dump FILE: export firmware in EM100pro to file\n"
-		"  -p|--holdpin [LOW|FLOAT|INPUT]:       set the hold pin state\n"
+		"  -f|--firmware-dump FILE:   export firmware in EM100pro to file\n"
+		"  -S|--set-serialno NUM:     set serial number to NUM\n"
+		"  -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state\n"
 		"  -D|--debug:         print debug information.\n"
-		"  -h|--help:          this help text\n\n");
+		"  -h|--help:          this help text\n\n", name);
 }
 
 /* get MCU and FPGA version, *100 encoded */
@@ -381,8 +386,8 @@ int main(int argc, char **argv)
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
 	int verify = 0, trace = 0;
-	int debug=0;
-	while ((opt = getopt_long(argc, argv, "c:d:p:rsvhtSDF:f:",
+	int debug = 0;
+	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:S:p:Dh",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -418,8 +423,9 @@ int main(int argc, char **argv)
 		case 'f':
 			firmware_out = optarg;
 			break;
+		default:
 		case 'h':
-			usage();
+			usage(argv[0]);
 			return 0;
 		}
 	}
