@@ -14,6 +14,8 @@ Usage:
   -f|--firmware-dump FILE:   export firmware in EM100pro to file
   -S|--set-serialno NUM:     set serial number to NUM
   -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state
+  -x|--device BUS:DEV use EM100pro on USB bus/device
+  -l|--list-devices   list all connected EM100pro devices
   -D|--debug:         print debug information.
   -h|--help:          this help text
 

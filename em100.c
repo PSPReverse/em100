@@ -310,6 +310,46 @@ static int em100_detach(struct em100 *em100)
 	return 0;
 }
 
+static int em100_list(void)
+{
+	struct em100 em100;
+	libusb_device **devs, *dev;
+	libusb_context *ctx = NULL;
+	int i, count = 0;
+
+	if (libusb_init(&ctx) < 0) {
+		printf("Could not init libusb.\n");
+		return 0;
+	}
+
+	libusb_set_debug(ctx, 3);
+
+	if (libusb_get_device_list(ctx, &devs) < 0) {
+		printf("Could not find USB devices.\n");
+		return 0;
+	}
+
+	for (i = 0; (dev = devs[i]) != NULL; i++) {
+		struct libusb_device_descriptor desc;
+		libusb_get_device_descriptor(dev, &desc);
+		if (desc.idVendor != 0x4b4 || desc.idProduct != 0x1235)
+			continue;
+
+		em100_attach(&em100, libusb_get_bus_number(dev),
+				libusb_get_device_address(dev));
+		printf(" Bus %03d Device %03d: EM100pro DP%06d\n",
+				libusb_get_bus_number(dev),
+				libusb_get_device_address(dev),
+				em100.serialno);
+		em100_detach(&em100);
+		count++;
+	}
+	if (count == 0)
+		printf("No EM100pro devices found.\n");
+	libusb_exit(ctx);
+	return 1;
+}
+
 static int set_chip_type(struct em100 *em100, const chipdesc *desc)
 {
 	unsigned char cmd[16];
@@ -375,6 +415,8 @@ static const struct option longopts[] = {
 	{"set-serialno", 1, 0, 'S'},
 	{"firmware-update", 1, 0, 'F'},
 	{"firmware-dump", 1, 0, 'f'},
+	{"device", 1, 0, 'x'},
+	{"list-devices", 0, 0, 'l'},
 	{NULL, 0, 0, 0}
 };
 
@@ -393,6 +435,8 @@ static void usage(char *name)
 		"  -f|--firmware-dump FILE:   export firmware in EM100pro to file\n"
 		"  -S|--set-serialno NUM:     set serial number to NUM\n"
 		"  -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state\n"
+		"  -x|--device BUS:DEV use EM100pro on USB bus/device\n"
+		"  -l|--list-devices   list all connected EM100pro devices\n"
 		"  -D|--debug:         print debug information.\n"
 		"  -h|--help:          this help text\n\n", name);
 }
@@ -410,7 +454,7 @@ int main(int argc, char **argv)
 	int verify = 0, trace = 0;
 	int debug = 0;
 	int bus = 0, device = 0;
-	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:S:p:Dh",
+	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:S:p:Dx:lh",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -446,6 +490,12 @@ int main(int argc, char **argv)
 		case 'f':
 			firmware_out = optarg;
 			break;
+		case 'x':
+			sscanf(optarg, "%d:%d", &bus, &device);
+			break;
+		case 'l':
+			em100_list();
+			return 0;
 		default:
 		case 'h':
 			usage(argv[0]);
