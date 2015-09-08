@@ -610,6 +610,7 @@ int main(int argc, char **argv)
 		FILE *fdata = fopen(filename, "rb");
 		if (!fdata) {
 			perror("Could not open upload file");
+			free(data);
 			return 1;
 		}
 
@@ -622,6 +623,13 @@ int main(int argc, char **argv)
 
 		if (length > maxlen) {
 			printf("FATAL: length > maxlen\n");
+			free(data);
+			return 1;
+		}
+
+		if (length == 0) {
+			printf("FATAL: No file to upload.\n");
+			free(data);
 			return 1;
 		}
 
