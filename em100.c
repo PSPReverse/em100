@@ -216,9 +216,9 @@ static int check_status(struct em100 *em100)
 	return 0;
 }
 
-static int em100_attach(struct em100 *em100, int bus, int device)
+static int em100_attach(struct em100 *em100, int bus, int device, int serial_number)
 {
-	libusb_device_handle *dev;
+	libusb_device_handle *dev = NULL;
 	libusb_context *ctx = NULL;
 
 	if (libusb_init(&ctx) < 0) {
@@ -228,7 +228,7 @@ static int em100_attach(struct em100 *em100, int bus, int device)
 
 	libusb_set_debug(ctx, 3);
 
-	if (!bus || !device) {
+	if ((!bus || !device) && !serial_number) {
 		dev = libusb_open_device_with_vid_pid(ctx, 0x4b4, 0x1235);
 	} else {
 		libusb_device **devs, *d;
@@ -255,12 +255,77 @@ static int em100_attach(struct em100 *em100, int bus, int device)
 				}
 				break;
 			}
+			if (serial_number) {
+				struct libusb_device_descriptor desc;
+				libusb_get_device_descriptor(d, &desc);
+				if (desc.idVendor == 0x4b4 && desc.idProduct == 0x1235) {
+					if (libusb_open(d, &dev)) {
+						printf("Couldn't open EM100pro device.\n");
+						continue;
+					}
+					if (!dev) {
+						printf("Couldn't open EM100pro device.\n");
+						continue;
+					}
+					if (libusb_kernel_driver_active(dev, 0) == 1) {
+						if (libusb_detach_kernel_driver(dev, 0) != 0) {
+							printf("Could not detach kernel driver.\n");
+							continue;
+						}
+					}
+					if (libusb_claim_interface(dev, 0) < 0) {
+						printf("Could not claim interface.\n");
+						continue;
+					}
+
+					em100->dev = dev;
+					em100->ctx = ctx;
+
+					/* Running the check_status and
+					 * get_version commands seems to
+					 * improve the stability of the probing
+					 * function.
+					 */
+					if (!check_status(em100)) {
+						printf("Device status unknown.\n");
+						goto next_device;
+					}
+
+					if (!get_version(em100)) {
+						printf("Failed to fetch version information.\n");
+						goto next_device;
+					}
+
+					if (!get_serialno(em100)) {
+						printf("Failed to fetch serial number.\n");
+						goto next_device;
+					}
+
+					if (serial_number == em100->serialno) {
+						break;
+					}
+
+next_device:
+					libusb_release_interface(dev, 0);
+					libusb_close(dev);
+					em100->dev = NULL;
+					em100->ctx = NULL;
+					em100->serialno = 0;
+					dev = NULL;
+				}
+			}
 		}
+
 		libusb_free_device_list(devs, 1);
 	}
 
-	if (!dev) {
-		printf("Could not find EM100pro.\n");
+	if (!dev && (bus && device)) {
+		printf("Could not find EM100pro at %03d:%03d.\n", bus, device);
+		return 0;
+	}
+	if (!dev && serial_number) {
+		printf("Could not find EM100pro with serial number DP%06d.\n",
+				serial_number);
 		return 0;
 	}
 
@@ -285,12 +350,12 @@ static int em100_attach(struct em100 *em100, int bus, int device)
 	}
 
 	if (!get_version(em100)) {
-		printf("Failed fetching version information.\n");
+		printf("Failed to fetch version information.\n");
 		return 0;
 	}
 
 	if (!get_serialno(em100)) {
-		printf("Failed fetching serial number.\n");
+		printf("Failed to fetch serial number.\n");
 		return 0;
 	}
 
@@ -300,7 +365,7 @@ static int em100_attach(struct em100 *em100, int bus, int device)
 static int em100_detach(struct em100 *em100)
 {
 	if (libusb_release_interface(em100->dev, 0) != 0) {
-		printf("releasing interface failed.\n");
+		printf("Releasing interface failed.\n");
 		return 1;
 	}
 
@@ -336,7 +401,7 @@ static int em100_list(void)
 			continue;
 
 		em100_attach(&em100, libusb_get_bus_number(dev),
-				libusb_get_device_address(dev));
+				libusb_get_device_address(dev), 0);
 		printf(" Bus %03d Device %03d: EM100pro DP%06d\n",
 				libusb_get_bus_number(dev),
 				libusb_get_device_address(dev),
@@ -437,7 +502,8 @@ static void usage(char *name)
 		"  -g|--firmware-write FILE:  export EM100pro firmware to DPFW file\n"
 		"  -S|--set-serialno NUM:     set serial number to NUM\n"
 		"  -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state\n"
-		"  -x|--device BUS:DEV use EM100pro on USB bus/device\n"
+		"  -x|--device BUS:DEV  use EM100pro on USB bus/device\n"
+		"  -x|--device DPxxxxxx use EM100pro with serial no DPxxxxxx\n"
 		"  -l|--list-devices   list all connected EM100pro devices\n"
 		"  -D|--debug:         print debug information.\n"
 		"  -h|--help:          this help text\n\n", name);
@@ -457,6 +523,8 @@ int main(int argc, char **argv)
 	int debug = 0;
 	int bus = 0, device = 0;
 	int firmware_is_dpfw = 0;
+	unsigned int serial_number = 0;
+
 	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:g:S:p:Dx:lh",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
@@ -498,7 +566,11 @@ int main(int argc, char **argv)
 			firmware_is_dpfw = 1;
 			break;
 		case 'x':
-			sscanf(optarg, "%d:%d", &bus, &device);
+			if ((optarg[0] == 'D' || optarg[0] == 'd') &&
+				(optarg[1] == 'P' || optarg[1] == 'p'))
+				sscanf(optarg + 2, "%d", &serial_number);
+			else
+				sscanf(optarg, "%d:%d", &bus, &device);
 			break;
 		case 'l':
 			em100_list();
@@ -532,7 +604,7 @@ int main(int argc, char **argv)
 	}
 
 	struct em100 em100;
-	if (!em100_attach(&em100, bus, device)) {
+	if (!em100_attach(&em100, bus, device, serial_number)) {
 		return 1;
 	}
 
@@ -572,7 +644,6 @@ int main(int argc, char **argv)
 	}
 
 	if (serialno) {
-		unsigned int serial_number;
 		if (sscanf(serialno, "%d", &serial_number) != 1)
 			printf("Error: Can't parse serial number '%s'\n",
 					serialno);
