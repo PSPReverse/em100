@@ -621,7 +621,13 @@ int main(int argc, char **argv)
 	}
 
 	if (serialno) {
-		if (sscanf(serialno, "%d", &serial_number) != 1)
+		int offset = 0;
+		/* if the user specified a serial containing DP, skip that */
+		if ((serialno[0] == 'D' || serialno[0] == 'd') &&
+		    (serialno[1] == 'P' || serialno[1] == 'p'))
+			offset = 2;
+
+		if (sscanf(serialno + offset, "%d", &serial_number) != 1)
 			printf("Error: Can't parse serial number '%s'\n",
 					serialno);
 		else
