@@ -528,6 +528,7 @@ int main(int argc, char **argv)
 			break;
 		case 'S':
 			serialno = optarg;
+			break;
 		case 'D':
 			debug=1;
 			break;
