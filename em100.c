@@ -371,8 +371,13 @@ static int em100_list(void)
 		if (desc.idVendor != 0x4b4 || desc.idProduct != 0x1235)
 			continue;
 
-		em100_attach(&em100, libusb_get_bus_number(dev),
-				libusb_get_device_address(dev), 0);
+		if (!em100_attach(&em100, libusb_get_bus_number(dev),
+				libusb_get_device_address(dev), 0)) {
+			printf("Could not read from EM100 at Bus %03d Device %03d\n",
+					libusb_get_bus_number(dev),
+					libusb_get_device_address(dev));
+			continue;
+		}
 		printf(" Bus %03d Device %03d: EM100pro DP%06d\n",
 				libusb_get_bus_number(dev),
 				libusb_get_device_address(dev),
