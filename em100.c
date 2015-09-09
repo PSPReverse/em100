@@ -216,6 +216,41 @@ static int check_status(struct em100 *em100)
 	return 0;
 }
 
+static int em100_init(struct em100 *em100, libusb_context *ctx, libusb_device_handle *dev)
+{
+	if (libusb_kernel_driver_active(dev, 0) == 1) {
+		if (libusb_detach_kernel_driver(dev, 0) != 0) {
+			printf("Could not detach kernel driver.\n");
+			return 0;
+		}
+	}
+
+	if (libusb_claim_interface(dev, 0) < 0) {
+		printf("Could not claim interface.\n");
+		return 0;
+	}
+
+	em100->dev = dev;
+	em100->ctx = ctx;
+
+	if (!check_status(em100)) {
+		printf("Device status unknown.\n");
+		return 0;
+	}
+
+	if (!get_version(em100)) {
+		printf("Failed to fetch version information.\n");
+		return 0;
+	}
+
+	if (!get_serialno(em100)) {
+		printf("Failed to fetch serial number.\n");
+		return 0;
+	}
+
+	return 1;
+}
+
 static int em100_attach(struct em100 *em100, int bus, int device, int serial_number)
 {
 	libusb_device_handle *dev = NULL;
@@ -267,45 +302,11 @@ static int em100_attach(struct em100 *em100, int bus, int device, int serial_num
 						printf("Couldn't open EM100pro device.\n");
 						continue;
 					}
-					if (libusb_kernel_driver_active(dev, 0) == 1) {
-						if (libusb_detach_kernel_driver(dev, 0) != 0) {
-							printf("Could not detach kernel driver.\n");
-							continue;
-						}
-					}
-					if (libusb_claim_interface(dev, 0) < 0) {
-						printf("Could not claim interface.\n");
-						continue;
-					}
 
-					em100->dev = dev;
-					em100->ctx = ctx;
-
-					/* Running the check_status and
-					 * get_version commands seems to
-					 * improve the stability of the probing
-					 * function.
-					 */
-					if (!check_status(em100)) {
-						printf("Device status unknown.\n");
-						goto next_device;
-					}
-
-					if (!get_version(em100)) {
-						printf("Failed to fetch version information.\n");
-						goto next_device;
-					}
-
-					if (!get_serialno(em100)) {
-						printf("Failed to fetch serial number.\n");
-						goto next_device;
-					}
-
-					if (serial_number == em100->serialno) {
+					if (em100_init(em100, ctx, dev) &&
+							(serial_number == em100->serialno))
 						break;
-					}
 
-next_device:
 					libusb_release_interface(dev, 0);
 					libusb_close(dev);
 					em100->dev = NULL;
@@ -329,37 +330,7 @@ next_device:
 		return 0;
 	}
 
-	if (libusb_kernel_driver_active(dev, 0) == 1) {
-		if (libusb_detach_kernel_driver(dev, 0) != 0) {
-			printf("Could not detach kernel driver.\n");
-			return 0;
-		}
-	}
-
-	if (libusb_claim_interface(dev, 0) < 0) {
-		printf("Could not claim interface.\n");
-		return 0;
-	}
-
-	em100->dev = dev;
-	em100->ctx = ctx;
-
-	if (!check_status(em100)) {
-		printf("Device status unknown.\n");
-		return 0;
-	}
-
-	if (!get_version(em100)) {
-		printf("Failed to fetch version information.\n");
-		return 0;
-	}
-
-	if (!get_serialno(em100)) {
-		printf("Failed to fetch serial number.\n");
-		return 0;
-	}
-
-	return 1;
+	return em100_init(em100, ctx, dev);
 }
 
 static int em100_detach(struct em100 *em100)
