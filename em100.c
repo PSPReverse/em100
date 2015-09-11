@@ -48,7 +48,43 @@ static const struct em100_hold_pin_states hold_pin_states[] = {
 
 static int set_state(struct em100 *em100, int run)
 {
-	return write_fpga_register(em100, 0x28, run & 1);
+	int retval = write_fpga_register(em100, 0x28, run & 1);
+
+	if (retval)
+		printf("%s EM100Pro\n", run ? "Started" : "Stopped");
+
+	return retval;
+}
+
+static void get_current_state(struct em100 *em100)
+{
+	uint16_t state;
+	if (read_fpga_register(em100, 0x28, &state))
+		printf("EM100Pro currently %s\n", state ? "running" : "stopped");
+	else
+		printf("EM100Pro state unknown\n");
+}
+
+static char * get_pin_string(int pin) {
+	switch (pin) {
+	case 0:
+		return ("low");
+		break;
+	case 2:
+		return ("float");
+		break;
+	case 3:
+		return ("input");
+		break;
+	}
+	return ("unknown");
+}
+
+static void get_current_pin_state(struct em100 *em100)
+{
+	uint16_t val = 0xffff;
+	read_fpga_register(em100, 0x2a, &val);
+	printf("EM100Pro hold pin currently %s\n", get_pin_string(val));
 }
 
 static int set_hold_pin_state(struct em100 *em100, int pin_state)
@@ -78,11 +114,12 @@ static int set_hold_pin_state(struct em100 *em100, int pin_state)
 	}
 
 	if (val != pin_state) {
-		printf("Invalid pin state response: 0x%04x (expected 0x%04x)\n",
-		       val, pin_state);
+		printf("Invalid pin state response: 0x%04x %s (expected 0x%04x %s)\n",
+		       val, get_pin_string(val), pin_state, get_pin_string(pin_state));
 		return 0;
 	}
 
+	printf("Hold pin state set to %s\n", get_pin_string(val));
 	return 1;
 }
 
@@ -606,7 +643,11 @@ int main(int argc, char **argv)
 	else
 		printf("Serial number: N.A.\n");
 	printf("SPI flash database: %s\n", VERSION);
-	if(debug) {
+	get_current_state(&em100);
+	get_current_pin_state(&em100);
+	printf("\n");
+
+	if (debug) {
 		em100_debug(&em100);
 	}
 
@@ -645,6 +686,7 @@ int main(int argc, char **argv)
 			printf("Failed configuring chip type.\n");
 			return 0;
 		}
+		printf("Chip set to %s\n", desiredchip);
 	}
 
 	if (holdpin) {
