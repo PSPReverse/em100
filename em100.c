@@ -713,11 +713,12 @@ int main(int argc, char **argv)
 	if (trace) {
 		struct sigaction signal_action;
 
-		if (!set_hold_pin_state(&em100, 3)) {
+		if ((holdpin == NULL) && (!set_hold_pin_state(&em100, 3))) {
 			printf("Error: Failed to set EM100 to input\n");
 			return 1;
 		}
-		set_state(&em100, 1);
+		if ((!do_start) && (!do_stop))
+			set_state(&em100, 1);
 		reset_spi_trace(&em100);
 
 		signal_action.sa_handler = exit_handler;
@@ -729,10 +730,11 @@ int main(int argc, char **argv)
 			read_spi_trace(&em100);
 		}
 
-		set_state(&em100, 0);
+		if ((!do_start) && (!do_stop))
+			set_state(&em100, 0);
 		reset_spi_trace(&em100);
 
-		if (!set_hold_pin_state(&em100, 2)) {
+		if ((holdpin == NULL) && (!set_hold_pin_state(&em100, 2))) {
 			printf("Error: Failed to set EM100 to float\n");
 			return 1;
 		}
