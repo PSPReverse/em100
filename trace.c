@@ -105,12 +105,60 @@ static int read_report_buffer(struct em100 *em100,
 	return 1;
 }
 
+struct spi_cmd_values {
+	char *cmd_name;
+	uint8_t cmd;
+	uint8_t uses_address;
+	uint8_t pad_bytes;
+};
+
+struct spi_cmd_values spi_command_list[] = {
+		/* name				cmd,	addr,	pad */
+		{"write status register",	0x01,	0,	0},
+		{"page program",		0x02,	1,	0},
+		{"read",			0x03,	1,	0},
+		{"write disable",		0x04,	0,	0},
+		{"read status register",	0x05,	0,	0},
+		{"write enable",		0x06,	0,	0},
+		{"fast read",			0x0b,	1,	1},
+		{"EM100 specific",		0x11,	0,	0},
+		{"fast dual read",		0x3b,	1,	2},
+		{"chip erase",			0x60,	0,	0},
+		{"read JEDEC ID",		0x9f,	0,	0},
+		{"chip erase",			0xc7,	0,	0},
+		{"sector erase",		0xd8,	1,	0},
+
+		{"unknown command",		0xff,	0,	0}
+};
+
+static struct spi_cmd_values * get_command_vals(uint8_t command) {
+	/* cache last command so a search isn't needed every time */
+	static struct spi_cmd_values *spi_cmd = &spi_command_list[3]; /* init to read */
+	int i;
+
+	if (spi_cmd->cmd != command) {
+		for (i = 0; spi_command_list[i].cmd != 0xff; i++) {
+			if (spi_command_list[i].cmd == command)
+				break;
+		}
+		spi_cmd = &spi_command_list[i];
+	}
+
+	return spi_cmd;
+}
+
+#define MAX_TRACE_BLOCKLENGTH	6
 int read_spi_trace(struct em100 *em100)
 {
 	unsigned char reportdata[REPORT_BUFFER_COUNT][REPORT_BUFFER_LENGTH] = {{0}};
 	unsigned char *data;
 	unsigned int count, i, report;
 	static int outbytes = 0;
+	static int additional_pad_bytes = 0;
+	static unsigned int address = 0;
+	static unsigned long long timestamp = 0;
+	static unsigned long long start_timestamp = 0;
+	static struct spi_cmd_values *spi_cmd_vals = &spi_command_list[3];
 
 	if (!read_report_buffer(em100, reportdata))
 		return 0;
@@ -119,47 +167,76 @@ int read_spi_trace(struct em100 *em100)
 		data = &reportdata[report][0];
 		count = (data[0] << 8) | data[1];
 		for (i = 0; i < count; i++) {
-			unsigned int j;
+			unsigned int j = additional_pad_bytes;
+			additional_pad_bytes = 0;
 			unsigned char cmd = data[2 + i*8];
 			if (cmd == 0xff) {
 				/* timestamp */
-				unsigned long long timestamp = 0;
 				timestamp = data[2 + i*8 + 2];
 				timestamp = (timestamp << 8) | data[2 + i*8 + 3];
 				timestamp = (timestamp << 8) | data[2 + i*8 + 4];
 				timestamp = (timestamp << 8) | data[2 + i*8 + 5];
 				timestamp = (timestamp << 8) | data[2 + i*8 + 6];
 				timestamp = (timestamp << 8) | data[2 + i*8 + 7];
-				printf("\ntimestamp: %lld.%lld", timestamp / 100000000, timestamp % 100000000);
 				continue;
 			}
-#if 0
-			printf("{(%d)", curpos);
-			for (j = 0; j < 8; j++) {
-				printf("%02x ", data[2 + i*8 + j]);
-			}
-			printf("}");
-#endif
+
 			/* from here, it must be data */
 			if (cmd != cmdid) {
+				unsigned char spi_command = data[i * 8 + 4];
+				spi_cmd_vals = get_command_vals(spi_command);
+
 				/* new command */
 				cmdid = cmd;
-				printf("\nspi command %6d: ", ++counter);
+				if (counter == 0)
+					start_timestamp = timestamp;
+
+				/* set up address if used by this command*/
+				if (!spi_cmd_vals->uses_address) {
+					j = 1; /* skip command byte */
+				} else {
+					address = (data[i * 8 + 5] << 16) +
+							(data[i * 8 + 6] << 8) +
+							data[i * 8 + 7];
+
+					/* skip command, address bytes, and padding */
+					j = 4 + spi_cmd_vals->pad_bytes;
+					if (j > MAX_TRACE_BLOCKLENGTH) {
+						additional_pad_bytes = j - MAX_TRACE_BLOCKLENGTH;
+						j = MAX_TRACE_BLOCKLENGTH;
+					}
+				}
+				printf("\nTime: %06lld.%08lld",
+						(timestamp - start_timestamp) / 100000000,
+						(timestamp - start_timestamp) % 100000000);
+				printf(" command # %-6d : 0x%02x - %s", ++counter,
+						spi_command,spi_cmd_vals->cmd_name);
 				curpos = 0;
 				outbytes = 0;
 			}
+
 			/* this exploits 8bit wrap around in curpos */
 			unsigned char blocklen = (data[2 + i*8 + 1] - curpos);
 			blocklen /= 8;
-			for (j = 0; j < blocklen; j++) {
-				printf("%02x ", data[2 + i*8 + 2 + j]);
+
+			for (; j < blocklen; j++) {
+				if (outbytes == 0) {
+					if (spi_cmd_vals->uses_address) {
+						printf("\n%08x : ", address);
+					} else {
+						printf("\n         : ");
+					}
+				}
+				printf("%02x ", data[i * 8 + 4 + j]);
 				outbytes++;
 				if (outbytes == 16) {
-					outbytes=0;
-					printf("\n                    ");
+					outbytes = 0;
+					if (spi_cmd_vals->uses_address)
+						address += 16;
 				}
 			}
 			curpos = data[2 + i*8 + 1] + 0x10; // this is because the em100 counts funny
+			fflush(stdout);
 		}
 	}
 	return 1;
