@@ -51,21 +51,28 @@ static unsigned int counter = 0;
 static unsigned char curpos = 0;
 static unsigned char cmdid = 0xff; // timestamp, so never a valid command id
 
-int read_spi_trace(struct em100 *em100)
+#define REPORT_BUFFER_LENGTH	8192
+#define REPORT_BUFFER_COUNT	8
+
+static int read_report_buffer(struct em100 *em100, 
+	unsigned char reportdata[REPORT_BUFFER_COUNT][REPORT_BUFFER_LENGTH])
 {
-	unsigned char cmd[16];
-	unsigned char data[8192];
-	unsigned int count, i, report;
-	static int outbytes = 0;
-	memset(cmd, 0, 16);
+	unsigned char cmd[16] = {0};
+	int len;
+	unsigned int report;
+
 	cmd[0] = 0xbc; /* read SPI trace buffer*/
 
-	/* Trace length, unit is 4k according to specs */
+	/* 
+	 * Trace length, unit is 4k according to specs
+	 *
+	 * cmd1..cmd4 are probably u32BE on how many
+	 * reports (8192 bytes each) to fetch
+	 */
 	cmd[1] = 0x00;
 	cmd[2] = 0x00;
 	cmd[3] = 0x00;
-	cmd[4] = 0x08; /* cmd1..cmd4 are probably u32BE on how many
-			  reports (8192 bytes each) to fetch */
+	cmd[4] = REPORT_BUFFER_COUNT;
 	/* Timeout in ms */
 	cmd[5] = 0x00;
 	cmd[6] = 0x00;
@@ -86,14 +93,30 @@ int read_spi_trace(struct em100 *em100)
 		return 0;
 	}
 
-	for (report = 0; report < 8; report++) {
-		memset(data, 0, sizeof(data));
-		int len = get_response(em100->dev, data, sizeof(data));
-		if (len != sizeof(data)) {
-			/* FIXME: handle error: device reset? */
-			printf("error, len = %d instead of %zd. bailing out\n\n", len, sizeof(data));
+	for (report = 0; report < REPORT_BUFFER_COUNT; report++) {
+		len = get_response(em100->dev, &reportdata[report][0], REPORT_BUFFER_LENGTH);
+		if (len != REPORT_BUFFER_LENGTH) {
+			printf("error, report length = %d instead of %d.\n\n",
+					len, REPORT_BUFFER_LENGTH);
 			return 0;
 		}
+	}
+
+	return 1;
+}
+
+int read_spi_trace(struct em100 *em100)
+{
+	unsigned char reportdata[REPORT_BUFFER_COUNT][REPORT_BUFFER_LENGTH] = {{0}};
+	unsigned char *data;
+	unsigned int count, i, report;
+	static int outbytes = 0;
+
+	if (!read_report_buffer(em100, reportdata))
+		return 0;
+
+	for (report = 0; report < REPORT_BUFFER_COUNT; report++) {
+		data = &reportdata[report][0];
 		count = (data[0] << 8) | data[1];
 		for (i = 0; i < count; i++) {
 			unsigned int j;
