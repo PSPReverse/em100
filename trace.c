@@ -148,7 +148,8 @@ static struct spi_cmd_values * get_command_vals(uint8_t command) {
 }
 
 #define MAX_TRACE_BLOCKLENGTH	6
-int read_spi_trace(struct em100 *em100, int display_terminal)
+int read_spi_trace(struct em100 *em100, int display_terminal,
+		unsigned long addr_offset)
 {
 	unsigned char reportdata[REPORT_BUFFER_COUNT][REPORT_BUFFER_LENGTH] = {{0}};
 	unsigned char *data;
@@ -224,7 +225,9 @@ int read_spi_trace(struct em100 *em100, int display_terminal)
 			for (; j < blocklen; j++) {
 				if (outbytes == 0) {
 					if (spi_cmd_vals->uses_address) {
-						printf("\n%08x : ", address);
+						printf("\n%08lx : ",
+								addr_offset +
+								address);
 					} else {
 						printf("\n         : ");
 					}

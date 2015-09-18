@@ -499,6 +499,7 @@ static const struct option longopts[] = {
 	{"debug", 0, 0, 'D'},
 	{"help", 0, 0, 'h'},
 	{"trace", 0, 0, 't'},
+	{"offset", 1, 0, 'O'},
 	{"set-serialno", 1, 0, 'S'},
 	{"firmware-update", 1, 0, 'F'},
 	{"firmware-dump", 1, 0, 'f'},
@@ -520,6 +521,7 @@ static void usage(char *name)
 		"  -s|--stop:          em100 shall stop\n"
 		"  -v|--verify:        verify EM100 content matches the file\n"
 		"  -t|--trace:         trace mode\n"
+		"  -O|--offset <hex value> address offset for trace mode\n"
 		"  -T|--terminal:      terminal mode\n"
 		"  -F|--firmware-update FILE: update EM100pro firmware (dangerous)\n"
 		"  -f|--firmware-dump FILE:   export raw EM100pro firmware to file\n"
@@ -548,8 +550,9 @@ int main(int argc, char **argv)
 	int bus = 0, device = 0;
 	int firmware_is_dpfw = 0;
 	unsigned int serial_number = 0;
+	unsigned long address_offset = 0;
 
-	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:g:S:p:Dx:lhT",
+	while ((opt = getopt_long(argc, argv, "c:d:rsvtO:F:f:g:S:p:Dx:lhT",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -573,6 +576,10 @@ int main(int argc, char **argv)
 			break;
 		case 't':
 			trace = 1;
+			break;
+		case 'O':
+			sscanf(optarg, "%lx", &address_offset);
+			printf("Address offset: 0x%08lx\n", address_offset);
 			break;
 		case 'T':
 			terminal = 1;
@@ -797,7 +804,7 @@ int main(int argc, char **argv)
 
 		while (!do_exit_flag) {
 			if (trace)
-				read_spi_trace(&em100, terminal);
+				read_spi_trace(&em100, terminal, address_offset);
 			else
 				read_spi_terminal(&em100, 0);
 		}

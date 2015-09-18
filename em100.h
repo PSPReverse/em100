@@ -144,7 +144,8 @@ typedef enum {
 } ht_msg_type_t;
 
 int reset_spi_trace(struct em100 *em100);
-int read_spi_trace(struct em100 *em100, int display_terminal);
+int read_spi_trace(struct em100 *em100, int display_terminal,
+		   unsigned long addr_offset);
 int read_spi_terminal(struct em100 *em100, int print_counter);
 int init_spi_terminal(struct em100 *em100);
 
