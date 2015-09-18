@@ -92,7 +92,7 @@ static int set_hold_pin_state_from_str(struct em100 *em100, const char *state)
 	const struct em100_hold_pin_states *s = &hold_pin_states[0];
 
 	while (s->description != NULL) {
-		if (!strcmp(s->description, state))
+		if (!strcasecmp(s->description, state))
 			break;
 		s++;
 	}
