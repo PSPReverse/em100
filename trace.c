@@ -148,7 +148,7 @@ static struct spi_cmd_values * get_command_vals(uint8_t command) {
 }
 
 #define MAX_TRACE_BLOCKLENGTH	6
-int read_spi_trace(struct em100 *em100)
+int read_spi_trace(struct em100 *em100, int display_terminal)
 {
 	unsigned char reportdata[REPORT_BUFFER_COUNT][REPORT_BUFFER_LENGTH] = {{0}};
 	unsigned char *data;
@@ -178,6 +178,8 @@ int read_spi_trace(struct em100 *em100)
 				timestamp = (timestamp << 8) | data[2 + i*8 + 5];
 				timestamp = (timestamp << 8) | data[2 + i*8 + 6];
 				timestamp = (timestamp << 8) | data[2 + i*8 + 7];
+				if (display_terminal)
+					read_spi_terminal(em100, 1);
 				continue;
 			}
 
@@ -240,4 +242,96 @@ int read_spi_trace(struct em100 *em100)
 		}
 	}
 	return 1;
+}
+
+#define UFIFO_SIZE	512
+#define UFIFO_TIMEOUT	0x00
+
+/*
+ * Polls the uFIFO buffer to see if there's any data. The HT registers don't
+ * seem to ever be updated to reflect that there's data present, and the
+ * Dediprog software doesn't use them either.
+ * 
+ * Multiple messages can be in a single uFIFO transfer, so loop through
+ * the data looking for the signature.
+ */
+int read_spi_terminal(struct em100 *em100, int show_counter) {
+	unsigned char data[UFIFO_SIZE] = { 0 };
+	static unsigned int msg_counter = 1; /* Number of messages */
+	uint16_t *data_length;
+	unsigned char *data_start;
+	unsigned int j, k;
+	struct em100_msg *msg = NULL;
+
+	if (!read_ufifo(em100, UFIFO_SIZE, UFIFO_TIMEOUT, &data[0]))
+		return 0;
+
+	/* the first two bytes are the amount of valid data */
+	data_length = (uint16_t *) &data[0];
+	if (*data_length == 0)
+		return 1;
+
+	/* actual data starts after the length */
+	data_start = &data[sizeof(uint16_t)];
+
+	/* examine data; stop when we run out of message or buffer */
+	for (j = 0; j < *data_length &&
+			j < UFIFO_SIZE - sizeof(struct em100_msg_header); j++) {
+
+		msg = (struct em100_msg *)(data_start + j);
+		if (msg->header.signature == EM100_MSG_SIGNATURE) {
+
+			if (show_counter)
+				printf("\nHT%06d: ", msg_counter);
+
+			/* print message byte according to format */
+			for (k = 0; k < msg->header.data_length; k++) {
+				if (&msg->data[k] >= data_start + *data_length)
+					break;
+				if (&msg->data[k] >= &data[0] + UFIFO_SIZE)
+					break;
+
+				switch (msg->header.data_type) {
+				case ht_checkpoint_1byte:
+				case ht_checkpoint_2bytes:
+				case ht_checkpoint_4bytes:
+				case ht_hexadecimal_data:
+				case ht_timestamp_data:
+					printf("%02x ", msg->data[k]);
+					break;
+				case ht_ascii_data:
+					printf("%c", msg->data[k]);
+					break;
+				case ht_lookup_table:
+					/* TODO - support lookup table */
+					printf("Lookup unsupported: %02x%02x",
+						msg->data[k], msg->data[k + 1]);
+					k++;
+					break;
+				}
+			}
+
+			/* advance to the end of the message */
+			j += msg->header.data_length + sizeof(struct em100_msg_header);
+			msg_counter++;
+			fflush(stdout);
+		}
+	}
+
+	return 1;
+}
+
+int init_spi_terminal (struct em100 *em100)
+{
+	int retval = 0x01;
+	uint16_t val;
+
+	retval &= write_ht_register(em100, ufifo_data_fmt_reg, 0);
+	retval &= write_ht_register(em100, status_reg, START_SPI_EMULATION);
+
+	/* set em100 to recognize spi command 0x11 */
+	retval &= write_fpga_register(em100, 0x82, EM100_SPECIFIC_CMD);
+	retval &= read_fpga_register(em100, 0x28, &val);
+
+	return retval;
 }

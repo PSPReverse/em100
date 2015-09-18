@@ -102,7 +102,50 @@ int get_voltage(struct em100 *em100, get_voltage_channel_t channel);
 int set_led(struct em100 *em100, led_state_t led_state);
 
 /* trace.c */
+#define EM100_SPECIFIC_CMD	0x11
+#define EM100_MSG_SIGNATURE	0x47364440
+
+typedef enum {
+	status_reg         = 0,
+	dfifo_bytes_reg    = 1,
+	ufifo_bytes_reg    = 2,
+	em100_id_reg       = 3,
+	ufifo_data_fmt_reg = 4,
+	timestamp_reg      = 5
+} ht_register_t;
+
+/* Status register bits */
+#define  UFIFO_OVERFLOW		 (1 << 0)
+#define  BIT8_UFIFO_BYTES	 (1 << 3)
+#define  START_SPI_EMULATION	 (1 << 4)
+#define  PAUSE_SPI_EMULATION	 (0 << 4)
+#define  UFIFO_EMPTY		 (1 << 5)
+#define  DFIFO_EMPTY		 (1 << 6)
+
+struct em100_msg_header{
+	uint32_t signature;
+	uint8_t data_type;
+	uint8_t data_length;
+} __attribute__ ((packed));
+
+struct em100_msg{
+	struct em100_msg_header header;
+	uint8_t data[255];
+} __attribute__ ((packed));
+
+typedef enum {
+	ht_checkpoint_1byte  = 0x01,
+	ht_checkpoint_2bytes = 0x02,
+	ht_checkpoint_4bytes = 0x03,
+	ht_hexadecimal_data  = 0x04,
+	ht_ascii_data        = 0x05,
+	ht_timestamp_data    = 0x06,
+	ht_lookup_table      = 0x07
+} ht_msg_type_t;
+
 int reset_spi_trace(struct em100 *em100);
-int read_spi_trace(struct em100 *em100);
+int read_spi_trace(struct em100 *em100, int display_terminal);
+int read_spi_terminal(struct em100 *em100, int print_counter);
+int init_spi_terminal(struct em100 *em100);
 
 #endif

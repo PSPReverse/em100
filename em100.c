@@ -477,6 +477,15 @@ static int set_chip_type(struct em100 *em100, const chipdesc *desc)
 		result += !send_cmd(em100->dev, cmd);
 	}
 
+	/*
+	 * Set FPGA registers as the Dediprog software does:
+	 * 0xc4 is set every time the chip type is updated
+	 * 0x10 and 0x81 are set once when the software is initialized.
+	 */
+	write_fpga_register(em100, 0xc4, 0x01);
+	write_fpga_register(em100, 0x10, 0x00);
+	write_fpga_register(em100, 0x81, 0x00);
+
 	return !result;
 }
 
@@ -496,6 +505,7 @@ static const struct option longopts[] = {
 	{"firmware-write", 1, 0, 'g'},
 	{"device", 1, 0, 'x'},
 	{"list-devices", 0, 0, 'l'},
+	{"terminal",0 ,0, 'T'},
 	{NULL, 0, 0, 0}
 };
 
@@ -510,6 +520,7 @@ static void usage(char *name)
 		"  -s|--stop:          em100 shall stop\n"
 		"  -v|--verify:        verify EM100 content matches the file\n"
 		"  -t|--trace:         trace mode\n"
+		"  -T|--terminal:      terminal mode\n"
 		"  -F|--firmware-update FILE: update EM100pro firmware (dangerous)\n"
 		"  -f|--firmware-dump FILE:   export raw EM100pro firmware to file\n"
 		"  -g|--firmware-write FILE:  export EM100pro firmware to DPFW file\n"
@@ -532,13 +543,13 @@ int main(int argc, char **argv)
 	const char *firmware_in = NULL, *firmware_out = NULL;
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
-	int verify = 0, trace = 0;
+	int verify = 0, trace = 0, terminal=0;
 	int debug = 0;
 	int bus = 0, device = 0;
 	int firmware_is_dpfw = 0;
 	unsigned int serial_number = 0;
 
-	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:g:S:p:Dx:lh",
+	while ((opt = getopt_long(argc, argv, "c:d:rsvtF:f:g:S:p:Dx:lhT",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -562,6 +573,9 @@ int main(int argc, char **argv)
 			break;
 		case 't':
 			trace = 1;
+			break;
+		case 'T':
+			terminal = 1;
 			break;
 		case 'S':
 			serialno = optarg;
@@ -752,29 +766,46 @@ int main(int argc, char **argv)
 		set_state(&em100, 1);
 	}
 
-	if (trace) {
+	if (trace || terminal) {
 		struct sigaction signal_action;
 
 		if ((holdpin == NULL) && (!set_hold_pin_state(&em100, 3))) {
 			printf("Error: Failed to set EM100 to input\n");
 			return 1;
 		}
+
 		if ((!do_start) && (!do_stop))
 			set_state(&em100, 1);
-		reset_spi_trace(&em100);
 
+		printf ("Starting ");
+
+		if (trace) {
+			reset_spi_trace(&em100);
+			printf("trace%s", terminal ? " & " : "");
+		}
+
+		if (terminal) {
+			init_spi_terminal(&em100);
+			printf("terminal");
+		}
+
+		printf(". Press CTL-C to exit.\n\n");
 		signal_action.sa_handler = exit_handler;
 		signal_action.sa_flags = 0;
 		sigemptyset(&signal_action.sa_mask);
 		sigaction(SIGINT, &signal_action, NULL);
 
 		while (!do_exit_flag) {
-			read_spi_trace(&em100);
+			if (trace)
+				read_spi_trace(&em100, terminal);
+			else
+				read_spi_terminal(&em100, 0);
 		}
 
 		if ((!do_start) && (!do_stop))
 			set_state(&em100, 0);
-		reset_spi_trace(&em100);
+		if (trace)
+			reset_spi_trace(&em100);
 
 		if ((holdpin == NULL) && (!set_hold_pin_state(&em100, 2))) {
 			printf("Error: Failed to set EM100 to float\n");

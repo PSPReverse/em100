@@ -297,6 +297,7 @@ int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout, u
 {
 	unsigned char cmd[16];
 	unsigned char data[512];
+	unsigned char data2[2];
 
 	if (length > 512) {
 		printf("Error: Length of data to be read from uFIFO can't be > 512\n");
@@ -312,6 +313,9 @@ int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout, u
 		return 0;
 	}
 	int len = get_response(em100->dev, data, 512);
+
+	/* get second response from read ufifo command */
+	get_response(em100->dev, data2, 2);
 
 	if (len == length) {
 		memcpy(blk, data, length);
