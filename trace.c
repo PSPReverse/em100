@@ -254,14 +254,14 @@ int read_spi_trace(struct em100 *em100, int display_terminal,
  * Polls the uFIFO buffer to see if there's any data. The HT registers don't
  * seem to ever be updated to reflect that there's data present, and the
  * Dediprog software doesn't use them either.
- * 
+ *
  * Multiple messages can be in a single uFIFO transfer, so loop through
  * the data looking for the signature.
  */
 int read_spi_terminal(struct em100 *em100, int show_counter) {
 	unsigned char data[UFIFO_SIZE] = { 0 };
 	static unsigned int msg_counter = 1; /* Number of messages */
-	uint16_t *data_length;
+	uint16_t data_length;
 	unsigned char *data_start;
 	unsigned int j, k;
 	struct em100_msg *msg = NULL;
@@ -270,15 +270,15 @@ int read_spi_terminal(struct em100 *em100, int show_counter) {
 		return 0;
 
 	/* the first two bytes are the amount of valid data */
-	data_length = (uint16_t *) &data[0];
-	if (*data_length == 0)
+	data_length = (data[0] << 8) + data[1];
+	if (data_length == 0)
 		return 1;
 
 	/* actual data starts after the length */
 	data_start = &data[sizeof(uint16_t)];
 
 	/* examine data; stop when we run out of message or buffer */
-	for (j = 0; j < *data_length &&
+	for (j = 0; j < data_length &&
 			j < UFIFO_SIZE - sizeof(struct em100_msg_header); j++) {
 
 		msg = (struct em100_msg *)(data_start + j);
@@ -289,7 +289,7 @@ int read_spi_terminal(struct em100 *em100, int show_counter) {
 
 			/* print message byte according to format */
 			for (k = 0; k < msg->header.data_length; k++) {
-				if (&msg->data[k] >= data_start + *data_length)
+				if (&msg->data[k] >= data_start + data_length)
 					break;
 				if (&msg->data[k] >= &data[0] + UFIFO_SIZE)
 					break;
@@ -315,7 +315,7 @@ int read_spi_terminal(struct em100 *em100, int show_counter) {
 			}
 
 			/* advance to the end of the message */
-			j += msg->header.data_length + sizeof(struct em100_msg_header);
+			j += msg->header.data_length + sizeof(struct em100_msg_header) - 1;
 			msg_counter++;
 			fflush(stdout);
 		}
