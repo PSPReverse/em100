@@ -12,7 +12,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ * Foundation, Inc.
  */
 
 #include <stdio.h>
@@ -91,7 +91,7 @@ static int set_hold_pin_state(struct em100 *em100, int pin_state)
 {
 	uint16_t val;
 
-	/* Read and acknowledge hold pin state setting bit 2 of pin state respone. */
+	/* Read and acknowledge hold pin state setting bit 2 of pin state response. */
 	if (!read_fpga_register(em100, 0x2a, &val)) {
 		printf("Couldn't get hold pin state.\n");
 		return 0;
@@ -114,8 +114,10 @@ static int set_hold_pin_state(struct em100 *em100, int pin_state)
 	}
 
 	if (val != pin_state) {
-		printf("Invalid pin state response: 0x%04x %s (expected 0x%04x %s)\n",
-		       val, get_pin_string(val), pin_state, get_pin_string(pin_state));
+		printf("Invalid pin state response: 0x%04x %s"
+				" (expected 0x%04x %s)\n", val,
+				get_pin_string(val), pin_state,
+				get_pin_string(pin_state));
 		return 0;
 	}
 
@@ -253,7 +255,8 @@ static int check_status(struct em100 *em100)
 	return 0;
 }
 
-static int em100_init(struct em100 *em100, libusb_context *ctx, libusb_device_handle *dev)
+static int em100_init(struct em100 *em100, libusb_context *ctx,
+		libusb_device_handle *dev)
 {
 	if (libusb_kernel_driver_active(dev, 0) == 1) {
 		if (libusb_detach_kernel_driver(dev, 0) != 0) {
@@ -288,7 +291,8 @@ static int em100_init(struct em100 *em100, libusb_context *ctx, libusb_device_ha
 	return 1;
 }
 
-static int em100_attach(struct em100 *em100, int bus, int device, int serial_number)
+static int em100_attach(struct em100 *em100, int bus, int device,
+		int serial_number)
 {
 	libusb_device_handle *dev = NULL;
 	libusb_context *ctx = NULL;
@@ -313,16 +317,22 @@ static int em100_attach(struct em100 *em100, int bus, int device, int serial_num
 
 		for (i = 0; (d = devs[i]) != NULL; i++) {
 			if ((bus > 0 && (libusb_get_bus_number(d) == bus)) &&
-				(device > 0 && (libusb_get_device_address(d) == device))) {
+				(device > 0 &&
+				(libusb_get_device_address(d) == device))) {
+
 				struct libusb_device_descriptor desc;
 				libusb_get_device_descriptor(d, &desc);
-				if (desc.idVendor == 0x4b4 && desc.idProduct == 0x1235) {
+				if (desc.idVendor == 0x4b4 &&
+						desc.idProduct == 0x1235) {
 					if (libusb_open(d, &dev)) {
-						printf("Couldn't open EM100pro device.\n");
+						printf("Couldn't open EM100pro"
+								" device.\n");
 						return 0;
 					}
 				} else {
-					printf("USB device on bus %03d:%02d is not an EM100pro.\n", bus, device);
+					printf("USB device on bus %03d:%02d is"
+							" not an EM100pro.\n",
+							bus, device);
 					return 0;
 				}
 				break;
@@ -330,18 +340,21 @@ static int em100_attach(struct em100 *em100, int bus, int device, int serial_num
 			if (serial_number) {
 				struct libusb_device_descriptor desc;
 				libusb_get_device_descriptor(d, &desc);
-				if (desc.idVendor == 0x4b4 && desc.idProduct == 0x1235) {
+				if (desc.idVendor == 0x4b4 &&
+						desc.idProduct == 0x1235) {
 					if (libusb_open(d, &dev)) {
-						printf("Couldn't open EM100pro device.\n");
+						printf("Couldn't open EM100pro"
+								" device.\n");
 						continue;
 					}
 					if (!dev) {
-						printf("Couldn't open EM100pro device.\n");
+						printf("Couldn't open EM100pro"
+								" device.\n");
 						continue;
 					}
 
 					if (em100_init(em100, ctx, dev) &&
-							(serial_number == em100->serialno))
+						(serial_number == em100->serialno))
 						break;
 
 					libusb_release_interface(dev, 0);
@@ -410,8 +423,8 @@ static int em100_list(void)
 
 		if (!em100_attach(&em100, libusb_get_bus_number(dev),
 				libusb_get_device_address(dev), 0)) {
-			printf("Could not read from EM100 at Bus %03d Device %03d\n",
-					libusb_get_bus_number(dev),
+			printf("Could not read from EM100 at Bus %03d Device"
+					" %03d\n", libusb_get_bus_number(dev),
 					libusb_get_device_address(dev));
 			continue;
 		}
@@ -513,26 +526,27 @@ static const struct option longopts[] = {
 static void usage(char *name)
 {
 	printf("em100: EM100pro command line utility\n\nExample:\n"
-		"  %s --stop --set M25P80 -d file.bin -v --start\n"
+		"  %s --stop --set M25P80 -d file.bin -v --start -t -O 0xfff00000\n"
 		"\nUsage:\n"
-		"  -c|--set CHIP:      select chip emulation\n"
-		"  -d|--download FILE: upload FILE into EM100pro\n"
-		"  -r|--start:         em100 shall run\n"
-		"  -s|--stop:          em100 shall stop\n"
-		"  -v|--verify:        verify EM100 content matches the file\n"
-		"  -t|--trace:         trace mode\n"
-		"  -O|--offset <hex value> address offset for trace mode\n"
-		"  -T|--terminal:      terminal mode\n"
-		"  -F|--firmware-update FILE: update EM100pro firmware (dangerous)\n"
-		"  -f|--firmware-dump FILE:   export raw EM100pro firmware to file\n"
-		"  -g|--firmware-write FILE:  export EM100pro firmware to DPFW file\n"
-		"  -S|--set-serialno NUM:     set serial number to NUM\n"
+		"  -c|--set CHIP:                  select chip emulation\n"
+		"  -d|--download FILE:             upload FILE into EM100pro\n"
+		"  -r|--start:                     em100 shall run\n"
+		"  -s|--stop:                      em100 shall stop\n"
+		"  -v|--verify:                    verify EM100 content matches the file\n"
+		"  -t|--trace:                     trace mode\n"
+		"  -O|--offset HEX_VAL:            address offset for trace mode\n"
+		"  -T|--terminal:                  terminal mode\n"
+		"  -F|--firmware-update FILE:      update EM100pro firmware (dangerous)\n"
+		"  -f|--firmware-dump FILE:        export raw EM100pro firmware to file\n"
+		"  -g|--firmware-write FILE:       export EM100pro firmware to DPFW file\n"
+		"  -S|--set-serialno NUM:          set serial number to NUM\n"
 		"  -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state\n"
-		"  -x|--device BUS:DEV  use EM100pro on USB bus/device\n"
-		"  -x|--device DPxxxxxx use EM100pro with serial no DPxxxxxx\n"
-		"  -l|--list-devices   list all connected EM100pro devices\n"
-		"  -D|--debug:         print debug information.\n"
-		"  -h|--help:          this help text\n\n", name);
+		"  -x|--device BUS:DEV             use EM100pro on USB bus/device\n"
+		"  -x|--device DPxxxxxx            use EM100pro with serial no DPxxxxxx\n"
+		"  -l|--list-devices               list all connected EM100pro devices\n"
+		"  -D|--debug:                     print debug information.\n"
+		"  -h|--help:                      this help text\n\n",
+		name);
 }
 
 /* get MCU and FPGA version, *100 encoded */
@@ -632,7 +646,8 @@ int main(int argc, char **argv)
 			do {
 				printf("%s ", chip->name);
 			} while ((++chip)->name);
-			printf("\n\nCould not find emulation for '%s'.\n", desiredchip);
+			printf("\n\nCould not find emulation for '%s'.\n",
+					desiredchip);
 
 			return 1;
 		}
@@ -656,7 +671,8 @@ int main(int argc, char **argv)
 		 * known to behave the old way, 0.75 is behaving the new
 		 * way.
 		 */
-		printf("FPGA version: %d.%02d\n", em100.fpga >> 8, em100.fpga & 0xff);
+		printf("FPGA version: %d.%02d\n", em100.fpga >> 8,
+				em100.fpga & 0xff);
 	}
 
 	if (em100.serialno != 0xffffffff)
@@ -734,7 +750,8 @@ int main(int argc, char **argv)
 		int length = 0;
 		while ((!feof(fdata)) && (length < maxlen)) {
 			int blocksize = 65536;
-			length += blocksize * fread(data+length, blocksize, 1, fdata);
+			length += blocksize * fread(data+length, blocksize, 1,
+					fdata);
 		}
 		fclose(fdata);
 
@@ -781,7 +798,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		if ((!do_start) && (!do_stop))
+		if (!do_start && !do_stop)
 			set_state(&em100, 1);
 
 		printf ("Starting ");
@@ -804,12 +821,13 @@ int main(int argc, char **argv)
 
 		while (!do_exit_flag) {
 			if (trace)
-				read_spi_trace(&em100, terminal, address_offset);
+				read_spi_trace(&em100, terminal,
+						address_offset);
 			else
 				read_spi_terminal(&em100, 0);
 		}
 
-		if ((!do_start) && (!do_stop))
+		if (!do_start && !do_stop)
 			set_state(&em100, 0);
 		if (trace)
 			reset_spi_trace(&em100);

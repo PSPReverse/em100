@@ -12,7 +12,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ * Foundation, Inc.
  */
 
 #include <stdio.h>
@@ -100,13 +100,16 @@ int write_sdram(struct em100 *em100, unsigned char *data, int address,
 		actual = 0;
 
 		bytes_left = length - bytes_sent;
-		bytes_to_send = (bytes_left < transfer_length) ? bytes_left : transfer_length;
+		bytes_to_send = (bytes_left < transfer_length) ? bytes_left :
+				transfer_length;
 
 		libusb_bulk_transfer(em100->dev, 1 | LIBUSB_ENDPOINT_OUT,
-			data + bytes_sent, bytes_to_send, &actual, BULK_SEND_TIMEOUT);
+			data + bytes_sent, bytes_to_send, &actual,
+			BULK_SEND_TIMEOUT);
 		bytes_sent += actual;
 		if (actual < bytes_to_send) {
-			printf("Tried sending %d bytes, sent %d\n", bytes_to_send, actual);
+			printf("Tried sending %d bytes, sent %d\n",
+					bytes_to_send, actual);
 			break;
 		}
 

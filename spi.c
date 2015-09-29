@@ -12,7 +12,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ * Foundation, Inc.
  */
 
 #include <stdio.h>
@@ -124,10 +124,12 @@ int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data)
 		bytes_left = length - bytes_sent;
 
 		libusb_bulk_transfer(em100->dev, 1 | LIBUSB_ENDPOINT_OUT,
-			data + bytes_sent, bytes_left, &actual, BULK_SEND_TIMEOUT);
+			data + bytes_sent, bytes_left, &actual,
+			BULK_SEND_TIMEOUT);
 		bytes_sent += actual;
 		if (actual < bytes_left) {
-			printf("Tried sending %d bytes, sent %d\n", bytes_left, actual);
+			printf("Tried sending %d bytes, sent %d\n", bytes_left,
+					actual);
 			break;
 		}
 	}
@@ -242,7 +244,8 @@ int write_ht_register(struct em100 *em100, int reg, uint8_t val)
 	return 1;
 }
 
-int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout, unsigned char *blk)
+int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout,
+		unsigned char *blk)
 {
 	int actual;
 	int bytes_sent=0;
@@ -251,7 +254,8 @@ int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout, 
 	unsigned char data[512];
 
 	if (length > 512) { /* Really? Should be 64? */
-		printf("Error: Length of data to be written to dFIFO can't be > 512\n");
+		printf("Error: Length of data to be written to dFIFO can't"
+				" be > 512\n");
 		return 0;
 	}
 	memset(cmd, 0, 16);
@@ -272,10 +276,12 @@ int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout, 
 		bytes_left = length - bytes_sent;
 
 		libusb_bulk_transfer(em100->dev, 1 | LIBUSB_ENDPOINT_OUT,
-			data + bytes_sent, bytes_left, &actual, BULK_SEND_TIMEOUT);
+			data + bytes_sent, bytes_left, &actual,
+			BULK_SEND_TIMEOUT);
 		bytes_sent += actual;
 		if (actual < bytes_left) {
-			printf("Tried sending %d bytes, sent %d\n", bytes_left, actual);
+			printf("Tried sending %d bytes, sent %d\n", bytes_left,
+					actual);
 			break;
 		}
 
@@ -293,14 +299,16 @@ int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout, 
 	return 0;
 }
 
-int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout, unsigned char *blk)
+int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout,
+		unsigned char *blk)
 {
 	unsigned char cmd[16];
 	unsigned char data[512];
 	unsigned char data2[2];
 
 	if (length > 512) {
-		printf("Error: Length of data to be read from uFIFO can't be > 512\n");
+		printf("Error: Length of data to be read from uFIFO can't be"
+				" > 512\n");
 		return 0;
 	}
 	memset(cmd, 0, 16);

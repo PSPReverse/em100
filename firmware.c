@@ -12,7 +12,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ * Foundation, Inc.
  */
 
 #include <stdio.h>
@@ -75,7 +75,8 @@ static void put_le32(unsigned char *out, uint32_t val)
 	out[3] = (val>>24)&0xff;
 }
 
-int firmware_dump(struct em100 *em100, const char *filename, int firmware_is_dpfw)
+int firmware_dump(struct em100 *em100, const char *filename,
+		int firmware_is_dpfw)
 {
 #define ROM_SIZE (2*1024*1024)
 	unsigned char data[ROM_SIZE];
@@ -90,7 +91,8 @@ int firmware_dump(struct em100 *em100, const char *filename, int firmware_is_dpf
 		if (!read_spi_flash_page(em100, i, data+i)) {
 			if (!read_spi_flash_page(em100, i, data+i))
 				if (!read_spi_flash_page(em100, i, data+i))
-					printf("\nERROR: Couldn't read @%08x\n", i);
+					printf("\nERROR: Couldn't read @%08x\n",
+							i);
 		}
 	}
 	print_progress(100);
@@ -239,7 +241,8 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 				> 256 ? 256 : MCU_LEN - i);
 		write_spi_flash_page(em100, i + 0x100100, page);
 		if ((i & 0xfff) == 0)
-			print_progress(((FPGA_LEN + i) * 100) / (FPGA_LEN + MCU_LEN));
+			print_progress(((FPGA_LEN + i) * 100) /
+					(FPGA_LEN + MCU_LEN));
 	}
 	print_progress(100);
 
@@ -254,7 +257,8 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 			if ((i & 0xfff) == 0)
 				print_progress((i * 100) / (FPGA_LEN + MCU_LEN));
 			if (memcmp(page, vpage, 256))
-				printf("\nERROR: Could not write FPGA firmware (%x).\n", i);
+				printf("\nERROR: Could not write FPGA firmware"
+						" (%x).\n", i);
 		}
 		for (i = 0; i < MCU_LEN; i += 256) {
 			memset(page, 0xff, 256);
@@ -263,9 +267,11 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 			read_spi_flash_page(em100, i + 0x100100, vpage);
 
 			if ((i & 0xfff) == 0)
-				print_progress(((FPGA_LEN + i) * 100) / (FPGA_LEN + MCU_LEN));
+				print_progress(((FPGA_LEN + i) * 100) /
+						(FPGA_LEN + MCU_LEN));
 			if (memcmp(page, vpage, 256))
-				printf("\nERROR: Could not write MCU firmware (%x).\n", i);
+				printf("\nERROR: Could not write MCU firmware"
+						" (%x).\n", i);
 		}
 	}
 	print_progress(100);

@@ -12,7 +12,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ * Foundation, Inc.
  */
 
 #include <stdio.h>
@@ -52,7 +52,8 @@ int set_voltage(struct em100 *em100, set_voltage_channel_t channel, int mV)
 
 	if ((channel == out_buffer_vcc) &&
 		(mV != 18 && mV != 25 && mV != 33)) {
-		printf("Error: For Buffer VCC, voltage needs to be 1.8V, 2.5V or 3.3V.\n");
+		printf("Error: For Buffer VCC, voltage needs to be 1.8V, 2.5V"
+				" or 3.3V.\n");
 		return 0;
 	}
 

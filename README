@@ -1,21 +1,25 @@
 em100: EM100pro command line utility
 
 Example:
-  ./em100 --stop --set M25P80 -d file.bin -v --start
+  ./em100 --stop --set M25P80 -d file.bin -v --start -t -O 0xfff00000
 
 Usage:
-  -c|--set CHIP:      select chip emulation
-  -d|--download FILE: upload FILE into EM100pro
-  -r|--start:         em100 shall run
-  -s|--stop:          em100 shall stop
-  -v|--verify:        verify EM100 content matches the file
-  -t|--trace:         trace mode
-  -F|--firmware-update FILE: update firmware in EM100pro (dangerous)
-  -f|--firmware-dump FILE:   export firmware in EM100pro to file
-  -S|--set-serialno NUM:     set serial number to NUM
+  -c|--set CHIP:                  select chip emulation
+  -d|--download FILE:             upload FILE into EM100pro
+  -r|--start:                     em100 shall run
+  -s|--stop:                      em100 shall stop
+  -v|--verify:                    verify EM100 content matches the file
+  -t|--trace:                     trace mode
+  -O|--offset HEX_VAL:            address offset for trace mode
+  -T|--terminal:                  terminal mode
+  -F|--firmware-update FILE:      update EM100pro firmware (dangerous)
+  -f|--firmware-dump FILE:        export raw EM100pro firmware to file
+  -g|--firmware-write FILE:       export EM100pro firmware to DPFW file
+  -S|--set-serialno NUM:          set serial number to NUM
   -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state
-  -x|--device BUS:DEV use EM100pro on USB bus/device
-  -l|--list-devices   list all connected EM100pro devices
-  -D|--debug:         print debug information.
-  -h|--help:          this help text
+  -x|--device BUS:DEV             use EM100pro on USB bus/device
+  -x|--device DPxxxxxx            use EM100pro with serial no DPxxxxxx
+  -l|--list-devices               list all connected EM100pro devices
+  -D|--debug:                     print debug information.
+  -h|--help:                      this help text
 

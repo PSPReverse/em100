@@ -12,7 +12,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ * Foundation, Inc.
  */
 
 #include <stdio.h>
@@ -94,7 +94,8 @@ static int read_report_buffer(struct em100 *em100,
 	}
 
 	for (report = 0; report < REPORT_BUFFER_COUNT; report++) {
-		len = get_response(em100->dev, &reportdata[report][0], REPORT_BUFFER_LENGTH);
+		len = get_response(em100->dev, &reportdata[report][0],
+				REPORT_BUFFER_LENGTH);
 		if (len != REPORT_BUFFER_LENGTH) {
 			printf("error, report length = %d instead of %d.\n\n",
 					len, REPORT_BUFFER_LENGTH);
@@ -151,7 +152,8 @@ static struct spi_cmd_values * get_command_vals(uint8_t command) {
 int read_spi_trace(struct em100 *em100, int display_terminal,
 		unsigned long addr_offset)
 {
-	unsigned char reportdata[REPORT_BUFFER_COUNT][REPORT_BUFFER_LENGTH] = {{0}};
+	unsigned char reportdata[REPORT_BUFFER_COUNT][REPORT_BUFFER_LENGTH] =
+			{{0}};
 	unsigned char *data;
 	unsigned int count, i, report;
 	static int outbytes = 0;
@@ -205,15 +207,19 @@ int read_spi_trace(struct em100 *em100, int display_terminal,
 					/* skip command, address bytes, and padding */
 					j = 4 + spi_cmd_vals->pad_bytes;
 					if (j > MAX_TRACE_BLOCKLENGTH) {
-						additional_pad_bytes = j - MAX_TRACE_BLOCKLENGTH;
+						additional_pad_bytes = j -
+							MAX_TRACE_BLOCKLENGTH;
 						j = MAX_TRACE_BLOCKLENGTH;
 					}
 				}
 				printf("\nTime: %06lld.%08lld",
-						(timestamp - start_timestamp) / 100000000,
-						(timestamp - start_timestamp) % 100000000);
-				printf(" command # %-6d : 0x%02x - %s", ++counter,
-						spi_command,spi_cmd_vals->cmd_name);
+						(timestamp - start_timestamp) /
+						100000000,
+						(timestamp - start_timestamp) %
+						100000000);
+				printf(" command # %-6d : 0x%02x - %s",
+						++counter, spi_command,
+						spi_cmd_vals->cmd_name);
 				curpos = 0;
 				outbytes = 0;
 			}
@@ -240,7 +246,8 @@ int read_spi_trace(struct em100 *em100, int display_terminal,
 						address += 16;
 				}
 			}
-			curpos = data[2 + i*8 + 1] + 0x10; // this is because the em100 counts funny
+			// this is because the em100 counts funny
+			curpos = data[2 + i*8 + 1] + 0x10;
 			fflush(stdout);
 		}
 	}
@@ -315,7 +322,8 @@ int read_spi_terminal(struct em100 *em100, int show_counter) {
 			}
 
 			/* advance to the end of the message */
-			j += msg->header.data_length + sizeof(struct em100_msg_header) - 1;
+			j += msg->header.data_length +
+					sizeof(struct em100_msg_header) - 1;
 			msg_counter++;
 			fflush(stdout);
 		}
