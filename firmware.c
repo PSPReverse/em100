@@ -179,6 +179,10 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 
 	fseek(f, 0, SEEK_END);
 	fsize = ftell(f);
+	if (fsize < 0) {
+		perror(filename);
+		return 0;
+	}
 	fseek(f, 0, SEEK_SET);
 
 	fw = malloc(fsize);
