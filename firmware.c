@@ -262,7 +262,7 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	/* Writing MCU firmware */
 	for (i = 0; i < mcu_len; i += 256) {
 		memset(page, 0xff, 256);
-		memcpy(page, fw +  mcu_offset + i, mcu_len - i
+		memcpy(page, fw +  mcu_offset + i, (mcu_len - i)
 				> 256 ? 256 : mcu_len - i);
 		write_spi_flash_page(em100, i + 0x100100, page);
 		if ((i & 0xfff) == 0)
