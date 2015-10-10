@@ -185,6 +185,7 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	fsize = ftell(f);
 	if (fsize < 0) {
 		perror(filename);
+		fclose(f);
 		return 0;
 	}
 	fseek(f, 0, SEEK_SET);
