@@ -169,6 +169,10 @@ int read_spi_trace(struct em100 *em100, int display_terminal,
 	for (report = 0; report < REPORT_BUFFER_COUNT; report++) {
 		data = &reportdata[report][0];
 		count = (data[0] << 8) | data[1];
+		if (count > 1022) {
+			printf("Warning: EM100pro sends too much data.\n");
+			count = 1022;
+		}
 		for (i = 0; i < count; i++) {
 			unsigned int j = additional_pad_bytes;
 			additional_pad_bytes = 0;
