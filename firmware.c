@@ -163,12 +163,15 @@ int firmware_dump(struct em100 *em100, const char *filename,
 
 int firmware_update(struct em100 *em100, const char *filename, int verify)
 {
+#define MAX_VERSION_LENGTH 10
 	unsigned char page[256], vpage[256];
 	FILE *f;
 	long fsize;
 	unsigned char *fw;
 	int i;
 	int fpga_offset, fpga_len, mcu_offset, mcu_len;
+	char fpga_version[MAX_VERSION_LENGTH + 1],
+	     mcu_version[MAX_VERSION_LENGTH + 1];
 
 	printf("\nAttempting firmware update with file %s\n", filename);
 
@@ -208,12 +211,19 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	mcu_offset = get_le32(fw+0x40);
 	mcu_len = get_le32(fw+0x44);
 
+	/* Extracting versions */
+	strncpy(mcu_version, (char *)fw + 0x14, MAX_VERSION_LENGTH);
+	mcu_version[MAX_VERSION_LENGTH] = '\0';
+	strncpy(fpga_version, (char *)fw + 0x1e, MAX_VERSION_LENGTH);
+	fpga_version[MAX_VERSION_LENGTH] = '\0';
+
 	printf("EM100Pro Update File: %s\n", filename);
 	printf("  Installed version:  MCU %d.%d, FPGA %d.%d (%s)\n",
 			em100->mcu >> 8, em100->mcu & 0xff,
 			em100->fpga >> 8 & 0x7f, em100->fpga & 0xff,
 			em100->fpga & 0x8000 ? "1.8V" : "3.3V");
-	printf("  New version:        MCU %s, FPGA %s\n", fw + 0x14, fw + 0x1e);
+	printf("  New version:        MCU %s, FPGA %s\n",
+			mcu_version, fpga_version);
 
 	/* Unlock and erase sector. Reading
 	 * the SPI flash ID is requires to
