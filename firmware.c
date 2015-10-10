@@ -225,6 +225,12 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	printf("  New version:        MCU %s, FPGA %s\n",
 			mcu_version, fpga_version);
 
+	if (fpga_len < 256 || mcu_len < 256) {
+		printf("\nFirmware file not valid.\n");
+		free(fw);
+		return 0;
+	}
+
 	/* Unlock and erase sector. Reading
 	 * the SPI flash ID is requires to
 	 * actually unlock the chip.
