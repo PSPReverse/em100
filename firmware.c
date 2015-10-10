@@ -168,6 +168,7 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	long fsize;
 	unsigned char *fw;
 	int i;
+	int fpga_offset, fpga_len, mcu_offset, mcu_len;
 
 	printf("\nAttempting firmware update with file %s\n", filename);
 
@@ -200,10 +201,11 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 		return 0;
 	}
 
-#define FPGA_OFFSET get_le32(fw+0x38)
-#define FPGA_LEN    get_le32(fw+0x3c)
-#define MCU_OFFSET  get_le32(fw+0x40)
-#define MCU_LEN     get_le32(fw+0x44)
+	/* Find firmwares in the update file */
+	fpga_offset = get_le32(fw+0x38);
+	fpga_len = get_le32(fw+0x3c);
+	mcu_offset = get_le32(fw+0x40);
+	mcu_len = get_le32(fw+0x44);
 
 	printf("EM100Pro Update File: %s\n", filename);
 	printf("  Installed version:  MCU %d.%d, FPGA %d.%d (%s)\n",
@@ -229,50 +231,50 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	printf("Writing firmware:\n");
 
 	/* Writing FPGA firmware */
-	for (i = 0; i < FPGA_LEN; i += 256) {
+	for (i = 0; i < fpga_len; i += 256) {
 		memset(page, 0xff, 256);
-		memcpy(page, fw +  FPGA_OFFSET + i, FPGA_LEN - i
-				> 256 ? 256 : FPGA_LEN - i);
+		memcpy(page, fw +  fpga_offset + i, fpga_len - i
+				> 256 ? 256 : fpga_len - i);
 		write_spi_flash_page(em100, i, page);
 		if ((i & 0xfff) == 0)
-			print_progress((i * 100) / (FPGA_LEN + MCU_LEN));
+			print_progress((i * 100) / (fpga_len + mcu_len));
 	}
 
 	/* Writing MCU firmware */
-	for (i = 0; i < MCU_LEN; i += 256) {
+	for (i = 0; i < mcu_len; i += 256) {
 		memset(page, 0xff, 256);
-		memcpy(page, fw +  MCU_OFFSET + i, MCU_LEN - i
-				> 256 ? 256 : MCU_LEN - i);
+		memcpy(page, fw +  mcu_offset + i, mcu_len - i
+				> 256 ? 256 : mcu_len - i);
 		write_spi_flash_page(em100, i + 0x100100, page);
 		if ((i & 0xfff) == 0)
-			print_progress(((FPGA_LEN + i) * 100) /
-					(FPGA_LEN + MCU_LEN));
+			print_progress(((fpga_len + i) * 100) /
+					(fpga_len + mcu_len));
 	}
 	print_progress(100);
 
 	if (verify) {
 		printf("Verifying firmware:\n");
-		for (i = 0; i < FPGA_LEN; i += 256) {
+		for (i = 0; i < fpga_len; i += 256) {
 			memset(page, 0xff, 256);
-			memcpy(page, fw +  FPGA_OFFSET + i, FPGA_LEN - i
-					> 256 ? 256 : FPGA_LEN - i);
+			memcpy(page, fw +  fpga_offset + i, fpga_len - i
+					> 256 ? 256 : fpga_len - i);
 			read_spi_flash_page(em100, i, vpage);
 
 			if ((i & 0xfff) == 0)
-				print_progress((i * 100) / (FPGA_LEN + MCU_LEN));
+				print_progress((i * 100) / (fpga_len + mcu_len));
 			if (memcmp(page, vpage, 256))
 				printf("\nERROR: Could not write FPGA firmware"
 						" (%x).\n", i);
 		}
-		for (i = 0; i < MCU_LEN; i += 256) {
+		for (i = 0; i < mcu_len; i += 256) {
 			memset(page, 0xff, 256);
-			memcpy(page, fw +  MCU_OFFSET + i, MCU_LEN - i
-					> 256 ? 256 : MCU_LEN - i);
+			memcpy(page, fw +  mcu_offset + i, mcu_len - i
+					> 256 ? 256 : mcu_len - i);
 			read_spi_flash_page(em100, i + 0x100100, vpage);
 
 			if ((i & 0xfff) == 0)
-				print_progress(((FPGA_LEN + i) * 100) /
-						(FPGA_LEN + MCU_LEN));
+				print_progress(((fpga_len + i) * 100) /
+						(fpga_len + mcu_len));
 			if (memcmp(page, vpage, 256))
 				printf("\nERROR: Could not write MCU firmware"
 						" (%x).\n", i);
