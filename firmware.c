@@ -226,7 +226,8 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	printf("  New version:        MCU %s, FPGA %s\n",
 			mcu_version, fpga_version);
 
-	if (fpga_len < 256 || mcu_len < 256) {
+	if (fpga_len < 256 || mcu_len < 256 ||
+		fpga_len > 0x100000 || mcu_len > 0xf0000) {
 		printf("\nFirmware file not valid.\n");
 		free(fw);
 		return 0;
