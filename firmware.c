@@ -190,6 +190,7 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	if (fread(fw, fsize, 1, f) != 1) {
 		perror(filename);
 		fclose(f);
+		free(fw);
 		return 0;
 	}
 	fclose(f);
