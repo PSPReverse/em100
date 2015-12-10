@@ -370,13 +370,15 @@ static int em100_attach(struct em100 *em100, int bus, int device,
 		libusb_free_device_list(devs, 1);
 	}
 
-	if (!dev && (bus && device)) {
-		printf("Could not find EM100pro at %03d:%03d.\n", bus, device);
-		return 0;
-	}
-	if (!dev && serial_number) {
-		printf("Could not find EM100pro with serial number DP%06d.\n",
-				serial_number);
+	if (!dev) {
+		if (bus && device)
+			printf("Could not find EM100pro at %03d:%03d.\n", bus, device);
+		else if (serial_number)
+			printf("Could not find EM100pro with serial number DP%06d.\n",
+					serial_number);
+		else
+			printf("Could not find EM100pro device.\n");
+
 		return 0;
 	}
 
