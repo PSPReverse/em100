@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-VERSION=4.2.24
+VERSION=4.2.25
 URL=http://www.dediprog.com/save/78.rar/to/EM100Pro_${VERSION}.rar
 
 if ! which curl > /dev/null; then
@@ -51,7 +51,7 @@ fi
 echo Unpacking configs...
 if ! $UNRAR x $FILE ${FILE%.rar}.msi > /dev/null ; then
   echo "No msi component found. Is ${URL} a correct url? Check" >&2
-  echo -n "http://www.dediprog.com/download?u=42&l=EM100Pro+SPI+Flash+Emulator" >&2
+  echo -n "http://www.dediprog.com/download?u=42&l=EM100Pro+SPI+Flash+Emulator " >&2
   echo "and edit $0 to use the latest archive URL" >&2
   rm -rf $TEMP
   exit 1
