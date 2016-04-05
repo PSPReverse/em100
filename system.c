@@ -83,6 +83,19 @@ int get_voltage(struct em100 *em100, get_voltage_channel_t channel)
 	int len = get_response(em100->dev, data, 512);
 	if ((len == 3) && (data[0] == 2)) {
 		voltage = (data[1] << 8) + data[2];
+		switch (channel) {
+		case in_v1_2:
+		case in_e_vcc:
+		case in_ref_plus:
+		case in_ref_minus:
+			/* each step is 5V/4096 (about 1.22mV) */
+			voltage = voltage * 12207 / 10000;
+			break;
+		default:
+			/* each step is 5V/1024 (about 4.88mV) */
+			voltage = voltage * 48828 / 10000;
+			break;
+		}
 		return voltage;
 	}
 	return 0;
