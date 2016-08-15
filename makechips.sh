@@ -16,7 +16,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-URL=http://www.dediprog.com/save/78.rar/to/EM100Pro.rar
+URL=http://www.dediprog.com/save/78.zip/to/EM100Pro.zip
 
 if ! which curl > /dev/null; then
   echo "Install curl to run this script."
@@ -26,12 +26,10 @@ if ! which 7z > /dev/null; then
   echo "Install 7z (aka p7zip-full on Ubuntu, p7zip-plugins on fedora) to run this script."
   exit 1
 fi
-if which unrar > /dev/null; then
-  UNRAR=unrar
-elif which rar > /dev/null; then
-  UNRAR=rar
+if which unzip > /dev/null; then
+  UNZIP=unzip
 else
-  echo "Install unrar/rar to run this script."
+  echo "Install unzip to run this script."
   exit 1
 fi
 
@@ -48,14 +46,14 @@ else
   curl -s $URL -o $FILE || exit
 fi
 echo Unpacking configs...
-if ! $UNRAR x $FILE ${FILE%.rar}*.msi > /dev/null ; then
+if ! $UNZIP $FILE ${FILE%.zip}*.msi > /dev/null ; then
   echo "No msi component found. Is ${URL} a correct url? Check" >&2
   echo -n "http://www.dediprog.com/download?u=42&l=EM100Pro+SPI+Flash+Emulator " >&2
   echo "and edit $0 to use the latest archive URL" >&2
   rm -rf $TEMP
   exit 1
 fi
-MSI=$(echo ${FILE%.rar}*.msi)
+MSI=$(echo ${FILE%.zip}*.msi)
 T=${MSI%.msi}
 VERSION=${T//*_}
 echo "Detected SPI flash database $VERSION"
