@@ -531,7 +531,8 @@ static void usage(char *name)
 		"  %s --stop --set M25P80 -d file.bin -v --start -t -O 0xfff00000\n"
 		"\nUsage:\n"
 		"  -c|--set CHIP:                  select chip emulation\n"
-		"  -d|--download FILE:             upload FILE into EM100pro\n"
+		"  -d|--download FILE:             download FILE into EM100pro\n"
+	        "  -u|--upload FILE:               upload from EM100pro into FILE\n"
 		"  -r|--start:                     em100 shall run\n"
 		"  -s|--stop:                      em100 shall stop\n"
 		"  -v|--verify:                    verify EM100 content matches the file\n"
@@ -557,7 +558,7 @@ int main(int argc, char **argv)
 	int opt, idx;
 	const char *desiredchip = NULL;
 	const char *serialno = NULL;
-	const char *filename = NULL;
+	const char *filename = NULL, *read_filename = NULL;
 	const char *firmware_in = NULL, *firmware_out = NULL;
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
@@ -568,7 +569,7 @@ int main(int argc, char **argv)
 	unsigned int serial_number = 0;
 	unsigned long address_offset = 0;
 
-	while ((opt = getopt_long(argc, argv, "c:d:rsvtO:F:f:g:S:p:Dx:lhT",
+	while ((opt = getopt_long(argc, argv, "c:d:u:rsvtO:F:f:g:S:p:Dx:lhT",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -577,6 +578,9 @@ int main(int argc, char **argv)
 		case 'd':
 			filename = optarg;
 			/* TODO: check that file exists */
+			break;
+		case 'u':
+			read_filename = optarg;
 			break;
 		case 'p':
 			holdpin = optarg;
@@ -732,6 +736,33 @@ int main(int argc, char **argv)
 		if (!set_hold_pin_state_from_str(&em100, holdpin)) {
 			printf("Failed configuring hold pin state.\n");
 			return 0;
+		}
+	}
+
+	if (read_filename) {
+		/* largest size - 16MB */
+		int maxlen = desiredchip ? chip->size : 0x1000000;
+		void *data = malloc(maxlen);
+		if (data == NULL) {
+			printf("FATAL: couldn't allocate memory\n");
+			return 1;
+		}
+		FILE *fdata = fopen(read_filename, "wb");
+		if (!fdata) {
+			perror("Could not open download file");
+			free(data);
+			return 1;
+		}
+
+		read_sdram(&em100, data, 0x00000000, maxlen);
+
+		int length = fwrite(data, maxlen, 1, fdata);
+		fclose(fdata);
+		free(data);
+
+		if (length != 1) {
+			printf("FATAL: failed to write");
+			return 1;
 		}
 	}
 
