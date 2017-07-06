@@ -16,7 +16,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-URL=http://www.dediprog.com/save/78.zip/to/EM100Pro.zip
+URL="https://www.dediprog.com/save/78.msi/to/EM100Pro.msi"
+VURL="https://www.dediprog.com/download?u=42&l=EM100Pro+SPI+Flash+Emulator"
 
 if ! which curl > /dev/null; then
   echo "Install curl to run this script."
@@ -24,12 +25,6 @@ if ! which curl > /dev/null; then
 fi
 if ! which 7z > /dev/null; then
   echo "Install 7z (aka p7zip-full on Ubuntu, p7zip-plugins on fedora) to run this script."
-  exit 1
-fi
-if which unzip > /dev/null; then
-  UNZIP=unzip
-else
-  echo "Install unzip to run this script."
   exit 1
 fi
 
@@ -46,19 +41,10 @@ else
   curl -s $URL -o $FILE || exit
 fi
 echo Unpacking configs...
-if ! $UNZIP $FILE ${FILE%.zip}*.msi > /dev/null ; then
-  echo "No msi component found. Is ${URL} a correct url? Check" >&2
-  echo -n "http://www.dediprog.com/download?u=42&l=EM100Pro+SPI+Flash+Emulator " >&2
-  echo "and edit $0 to use the latest archive URL" >&2
-  rm -rf $TEMP
-  exit 1
-fi
-MSI=$(echo ${FILE%.zip}*.msi)
-T=${MSI%.msi}
-VERSION=${T//*_}
-echo "Detected SPI flash database $VERSION"
+VERSION="$( curl -s "$VURL" | grep -A1 EM100Pro\ Soft | tail -1 | cut -d\> -f2 | cut -d\< -f1 )"
+echo "Detected SPI flash database \"$VERSION\""
 
-if ! 7z x $MSI PRO_* > /dev/null ; then
+if ! 7z x $FILE PRO_* > /dev/null ; then
   echo "No PRO_* components found..."
   rm -rf $TEMP
   exit 1
