@@ -23,6 +23,8 @@ PKG_CONFIG?=pkg-config
 SOURCES=em100.c firmware.c fpga.c hexdump.c sdram.c spi.c system.c trace.c usb.c
 INCLUDES=em100pro_chips.h em100.h
 
+all: em100 makedpfw
+
 em100: $(SOURCES) $(INCLUDES)
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(SOURCES) \
 		$(shell $(PKG_CONFIG) --cflags --libs libusb-1.0)
@@ -33,8 +35,11 @@ em100pro_chips.h: makechips.c makechips.sh
 	VERSION="$$(cat configs/VERSION)" ./makechips configs/*.cfg > $@
 	rm makechips
 
+makedpfw: makedpfw.c
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $<
+
 clean:
-	rm -f em100
+	rm -f em100 makedpfw
 
 distclean: clean
 	rm -rf configs makechips
