@@ -104,12 +104,12 @@ int firmware_dump(struct em100 *em100, const char *filename,
 
 	if (firmware_is_dpfw) {
 		int fpga_size = 0, mcu_size = 0;
-		char *all_ff[256];
+		char all_ff[256];
 		char mcu_version[8];
 		char fpga_version[8];
 		unsigned char header[0x100];
 
-		memset(all_ff, 255, 256);
+		memset(all_ff, 255, 256 * sizeof(char));
 		for (i = 0; i < 0x100000; i+=0x100) {
 			if (memcmp(data+i, all_ff, 256) == 0)
 				break;
