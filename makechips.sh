@@ -55,6 +55,47 @@ for i in PRO_*; do
   cp $i $WD/configs/${i#PRO_}.cfg
 done
 echo "${VERSION}" > $WD/configs/VERSION
+
+echo Extract firmware files...
+mkdir -p $WD/firmware
+if ! 7z x $FILE F? F?? > /dev/null ; then
+  echo "No F* components found..."
+  rm -rf $TEMP
+  exit 1
+fi
+
+cat $WD/firmware.txt | while read md5 type size version voltage
+do
+  if [ "$md5" == "--" ]; then
+    $WD/makedpfw -m $MCU_FILE -M $MCU_VERSION \
+		-f $FPGA_18V_FILE -F $FPGA_18V_VERSION \
+		-o $WD/firmware/em100pro_fw_${MCU_VERSION}_${FPGA_18V_VERSION}_1.8V.dpfw
+    $WD/makedpfw -m $MCU_FILE -M $MCU_VERSION \
+		-f $FPGA_33V_FILE -F $FPGA_33V_VERSION \
+		-o $WD/firmware/em100pro_fw_${MCU_VERSION}_${FPGA_33V_VERSION}_3.3V.dpfw
+    continue
+  fi
+  for i in F? F??; do
+    if [ "$( md5sum $i | cut -f1 -d\  )" == "$md5" ]; then
+      if [ $type == "MCU" ]; then
+        MCU_FILE=$i
+	MCU_VERSION=$version
+      fi
+      if [ $type == "FPGA" ]; then
+        if [ "$voltage" == "1.8V" ]; then
+          FPGA_18V_FILE=$i
+	  FPGA_18V_VERSION=$version
+	else
+	  FPGA_33V_FILE=$i
+	  FPGA_33V_VERSION=$version
+	fi
+      fi
+      break
+    fi
+  done
+done
+echo "${VERSION}" > $WD/firmware/VERSION
+
 cd $WD
 rm -rf $TEMP
 echo Done...
