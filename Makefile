@@ -15,6 +15,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+.SILENT:
+
 CFLAGS?=-O2 -g
 CFLAGS+=-Wall -Werror
 CC?=gcc
@@ -26,24 +28,25 @@ INCLUDES=em100pro_chips.h em100.h
 all: em100
 
 em100: $(SOURCES) $(INCLUDES)
+	printf "  CC     em100\n"
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(SOURCES) \
 		$(shell $(PKG_CONFIG) --cflags --libs libusb-1.0)
 
-em100pro_chips.h: makechips.c makechips.sh
+em100pro_chips.h: makechips.sh
+	printf "  CREATE em100pro_chips.sh & firmware images\n"
 	./makechips.sh
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o makechips $<
-	VERSION="$$(cat configs/VERSION)" ./makechips configs/*.cfg > $@
-	rm makechips
 
-makechips.sh: makedpfw
+makechips.sh: makedpfw makechips
 
-makedpfw: makedpfw.c
+%: %.c
+	printf "  CC     $@\n"
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $<
 
 clean:
-	rm -f em100 makedpfw
+	rm -f em100 makedpfw makechips
+	rm -rf configs firmware
 
 distclean: clean
-	rm -rf configs firmware makechips
+	rm em100pro_chips.h
 
 .PHONY: clean distclean

@@ -23,8 +23,8 @@ if ! which curl > /dev/null; then
   echo "Install curl to run this script."
   exit 1;
 fi
-if ! which 7z > /dev/null; then
-  echo "Install 7z (aka p7zip-full on Ubuntu, p7zip-plugins on fedora) to run this script."
+if ! which msiextract > /dev/null; then
+  echo "Install msitools (https://wiki.gnome.org/msitools) to run this script."
   exit 1
 fi
 
@@ -34,69 +34,43 @@ WD=$(readlink -f $(dirname $0))
 
 cd $TEMP
 if [ -r $WD/$FILE ]; then
-  echo Copying $FILE...
+  echo "    Copying $FILE..."
   cp $WD/$FILE .
 else
-  echo Downloading $FILE...
+  echo "    Downloading $FILE..."
   curl -s $URL -o $FILE || exit
 fi
-echo Unpacking configs...
+echo "    Unpacking ..."
 VERSION="$( curl -s "$VURL" | grep -A1 EM100Pro\ Soft | tail -1 | cut -d\> -f2 | cut -d\< -f1 )"
-echo "Detected SPI flash database \"$VERSION\""
+echo "    Detected SPI flash database \"$VERSION\""
 
-if ! 7z x $FILE PRO_* > /dev/null ; then
-  echo "No PRO_* components found..."
+if ! msiextract $FILE > /dev/null ; then
+  echo "    Could not unpack Windows installer..."
   rm -rf $TEMP
   exit 1
 fi
-echo  Copying configs...
+
+echo "    Creating configs..."
 mkdir -p $WD/configs
-for i in PRO_*; do
-  cp $i $WD/configs/${i#PRO_}.cfg
-done
+cp -a $TEMP/Program\ Files/DediProg/EM100/config/EM100Pro/*.cfg $WD/configs
 echo "${VERSION}" > $WD/configs/VERSION
+VERSION=${VERSION} $WD/makechips $WD/configs/*.cfg > $WD/em100pro_chips.h
 
-echo Extract firmware files...
+echo "    Extract firmware files..."
 mkdir -p $WD/firmware
-if ! 7z x $FILE F? F?? > /dev/null ; then
-  echo "No F* components found..."
-  rm -rf $TEMP
-  exit 1
-fi
-
-cat $WD/firmware.txt | while read md5 type size version voltage
+for i in $TEMP/Program\ Files/DediProg/EM100/firmware/EM100ProFW_*
 do
-  if [ "$md5" == "--" ]; then
-    $WD/makedpfw -m $MCU_FILE -M $MCU_VERSION \
-                -f $FPGA_18V_FILE -F $FPGA_18V_VERSION \
-                -o $WD/firmware/em100pro_fw_${MCU_VERSION}_${FPGA_18V_VERSION}_1.8V.dpfw
-    $WD/makedpfw -m $MCU_FILE -M $MCU_VERSION \
-                -f $FPGA_33V_FILE -F $FPGA_33V_VERSION \
-                -o $WD/firmware/em100pro_fw_${MCU_VERSION}_${FPGA_33V_VERSION}_3.3V.dpfw
-    continue
-  fi
-  for i in F? F??; do
-    if [ "$( md5sum $i | cut -f1 -d\  )" == "$md5" ]; then
-      if [ $type == "MCU" ]; then
-        MCU_FILE=$i
-        MCU_VERSION=$version
-      fi
-      if [ $type == "FPGA" ]; then
-        if [ "$voltage" == "1.8V" ]; then
-          FPGA_18V_FILE=$i
-          FPGA_18V_VERSION=$version
-        else
-          FPGA_33V_FILE=$i
-          FPGA_33V_VERSION=$version
-        fi
-      fi
-      break
-    fi
-  done
+  firmware=$( basename "$i" )
+  tuple=${firmware#EM100ProFW_}
+  v=${tuple: -3}
+  voltage=${v/V/.}V
+  mcu_version=${tuple: 1:1}.${tuple: 2:2}
+  fpga_version=${tuple: 4:1}.${tuple: 5:2}
+
+  $WD/makedpfw -m "$i/2.bin" -M $mcu_version -f "$i/1.bin" -F $fpga_version \
+     -o $WD/firmware/em100pro_fw_${mcu_version}_${fpga_version}_${voltage}.dpfw
 done
 echo "${VERSION}" > $WD/firmware/VERSION
 
 cd $WD
 rm -rf $TEMP
-echo Done...
-
