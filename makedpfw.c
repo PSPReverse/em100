@@ -77,7 +77,7 @@ static void usage(char *name)
 
 int main(int argc, char *argv[])
 {
-	int opt, idx, params_ok = 1, debug = 0;
+	int opt, idx, params_ok = 1, debug = 0, c = 0;
 	char *mcufile = NULL, *fpgafile = NULL;
 	char *mcuversion = NULL, *fpgaversion = NULL;
 	char *outfile = NULL;
@@ -218,11 +218,21 @@ int main(int argc, char *argv[])
 
 	if (debug)
 		printf("Writing output file '%s'.\n", outfile);
-	// FIXME test whether file exists already
+
 	out_f = fopen(outfile, "w");
-	fwrite(out, 0x100, 1, out_f);
-	fwrite(fpga, ALIGN(fpga_size, 0x100), 1, out_f);
-	fwrite(mcu, ALIGN(mcu_size, 0x100), 1, out_f);
+	if (out_f == NULL) {
+		perror(outfile);
+		return 1;
+	}
+
+	c += fwrite(out, 0x100, 1, out_f);
+	c += fwrite(fpga, ALIGN(fpga_size, 0x100), 1, out_f);
+	c += fwrite(mcu, ALIGN(mcu_size, 0x100), 1, out_f);
+
+	if (c != 3) {
+		fprintf(stderr, "%s: write failed.\n", outfile);
+		return 1;
+	}
 
 	if (debug)
 		printf("Done.\n");
