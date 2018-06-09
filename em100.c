@@ -302,7 +302,11 @@ static int em100_attach(struct em100 *em100, int bus, int device,
 		return 0;
 	}
 
+#if LIBUSB_API_VERSION < 0x01000106
 	libusb_set_debug(ctx, 3);
+#else
+	libusb_set_option(ctx, LIBUSB_OPTION_LOG_LEVEL, 3);
+#endif
 
 	if ((!bus || !device) && !serial_number) {
 		dev = libusb_open_device_with_vid_pid(ctx, 0x4b4, 0x1235);
@@ -410,7 +414,11 @@ static int em100_list(void)
 		return 0;
 	}
 
+#if LIBUSB_API_VERSION < 0x01000106
 	libusb_set_debug(ctx, 3);
+#else
+	libusb_set_option(ctx, LIBUSB_OPTION_LOG_LEVEL, 3);
+#endif
 
 	if (libusb_get_device_list(ctx, &devs) < 0) {
 		printf("Could not find USB devices.\n");
