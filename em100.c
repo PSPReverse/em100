@@ -748,8 +748,8 @@ int main(int argc, char **argv)
 	}
 
 	if (read_filename) {
-		/* largest size - 16MB */
-		int maxlen = desiredchip ? chip->size : 0x1000000;
+		/* largest size - 64MB */
+		int maxlen = desiredchip ? chip->size : 0x4000000;
 		void *data = malloc(maxlen);
 		if (data == NULL) {
 			printf("FATAL: couldn't allocate memory\n");
@@ -775,7 +775,7 @@ int main(int argc, char **argv)
 	}
 
 	if (filename) {
-		int maxlen = 0x1000000; /* largest size - 16MB */
+		int maxlen = 0x4000000; /* largest size - 64MB */
 		void *data = malloc(maxlen);
 		if (data == NULL) {
 			printf("FATAL: couldn't allocate memory\n");
