@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2012 The Chromium OS Authors.
+# Copyright 2012 Google Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
