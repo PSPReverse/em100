@@ -16,8 +16,8 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-URL="https://www.dediprog.com/save/78.msi/to/EM100Pro.msi"
-VURL="https://www.dediprog.com/download?u=42&l=EM100Pro+SPI+Flash+Emulator"
+URL="https://www.dediprog.com/download/save/78.msi"
+VURL="https://www.dediprog.com/download?productCategory=SPI+Flash+Solution&productName=EM100Pro-G2+SPI+Flash+Emulator&fileType=10"
 
 if ! which curl > /dev/null; then
   echo "Install curl to run this script."
@@ -28,7 +28,7 @@ if ! which msiextract > /dev/null; then
   exit 1
 fi
 
-FILE=$(basename $URL)
+FILE=EM100Pro.msi
 TEMP=$(mktemp -d /tmp/makech.XXXXXX)
 WD=$(readlink -f $(dirname $0))
 
@@ -41,7 +41,7 @@ else
   curl -s $URL -o $FILE || exit
 fi
 echo "    Unpacking ..."
-VERSION="$( curl -s "$VURL" | grep -A1 EM100Pro\ Soft | tail -1 | cut -d\> -f2 | cut -d\< -f1 )"
+VERSION="$( curl -s "$VURL" | grep -A2 EM100Pro-G2\ Soft|tail -1| cut -d\< -f1 | tr -d ' 	')"
 echo "    Detected SPI flash database \"$VERSION\""
 
 if ! msiextract $FILE > /dev/null ; then
