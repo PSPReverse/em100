@@ -117,3 +117,41 @@ int write_fpga_register(struct em100 *em100, int reg, int val)
 	}
 	return 1;
 }
+
+int fpga_set_voltage(struct em100 *em100, int voltage_code)
+{
+	unsigned char cmd[16];
+
+	memset(cmd, '\0', 16);
+	cmd[0] = 0x24; /* Switch FPGA */
+	if (voltage_code == 18) {
+		cmd[2] = 7;
+		cmd[3] = 0x80;
+	}
+	if (!send_cmd(em100->dev, cmd))
+		return 0;
+
+	return 1;
+}
+
+int fpga_get_voltage(struct em100 *em100, int *voltage_codep)
+{
+	if (!get_version(em100))
+		return 0;
+
+	*voltage_codep = em100->fpga & 0x8000 ? 18 : 33;
+
+	return 1;
+}
+
+int fpga_reconfigure(struct em100 *em100)
+{
+	unsigned char cmd[16];
+
+	memset(cmd, '\0', 16);
+	cmd[0] = 0x20; /* Switch FPGA */
+	if (!send_cmd(em100->dev, cmd))
+		return 0;
+
+	return 1;
+}

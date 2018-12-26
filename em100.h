@@ -44,6 +44,9 @@ int reconfig_fpga(struct em100 *em100);
 int check_fpga_status(struct em100 *em100);
 int read_fpga_register(struct em100 *em100, int reg, uint16_t *val);
 int write_fpga_register(struct em100 *em100, int reg, int val);
+int fpga_set_voltage(struct em100 *em100, int voltage_code);
+int fpga_get_voltage(struct em100 *em100, int *voltage_codep);
+int fpga_reconfigure(struct em100 *em100);
 
 /* hexdump.c */
 void hexdump(const void *memory, size_t length);

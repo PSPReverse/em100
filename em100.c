@@ -21,6 +21,7 @@
 #include <strings.h>
 #include <signal.h>
 #include <getopt.h>
+#include <unistd.h>
 #include "em100.h"
 
 /* SPI flash chips parameters definition */
@@ -142,6 +143,56 @@ static int set_hold_pin_state_from_str(struct em100 *em100, const char *state)
 	pin_state = s->value;
 
 	return set_hold_pin_state(em100, pin_state);
+}
+
+static int set_fpga_voltage(struct em100 *em100, int voltage_code)
+{
+	int val;
+
+	if (!fpga_reconfigure(em100)) {
+		printf("Couldn't reconfigure FPGA.\n");
+		return 0;
+	}
+
+	if (!fpga_set_voltage(em100, voltage_code)) {
+		printf("Couldn't set FPGA voltage.\n");
+		return 0;
+	}
+
+	/* Must wait 2s before issuing any other USB comand */
+	sleep(2);
+
+	if (!fpga_get_voltage(em100, &val)) {
+		printf("Couldn't get FPGA voltage.\n");
+		return 0;
+	}
+
+	if (val != voltage_code) {
+		printf("Invalid voltage response: %#x (expected %#x)\n", val,
+		       voltage_code);
+		return 0;
+	}
+
+	printf("Voltage set to %s\n", val == 18 ? "1.8" : "3.3");
+
+	return 1;
+}
+
+static int set_fpga_voltage_from_str(struct em100 *em100,
+				     const char *voltage_str)
+{
+	int voltage_code;
+
+	if (!strcmp(voltage_str, "3.3"))
+		voltage_code = 33;
+	else if (!strcmp(voltage_str, "1.8"))
+		voltage_code = 18;
+	else {
+		printf("Invalid voltage, use 1.8 or 3.3.\n");
+		return 0;
+	}
+
+	return set_fpga_voltage(em100, voltage_code);
 }
 
 /**
@@ -553,6 +604,7 @@ static void usage(char *name)
 		"  -f|--firmware-dump FILE:        export raw EM100pro firmware to file\n"
 		"  -g|--firmware-write FILE:       export EM100pro firmware to DPFW file\n"
 		"  -S|--set-serialno NUM:          set serial number to NUM\n"
+		"  -V|--set-voltage [1.8|3.3]      switch FPGA voltage\n"
 		"  -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state\n"
 		"  -x|--device BUS:DEV             use EM100pro on USB bus/device\n"
 		"  -x|--device DPxxxxxx            use EM100pro with serial no DPxxxxxx\n"
@@ -579,8 +631,9 @@ int main(int argc, char **argv)
 	unsigned int serial_number = 0;
 	unsigned long address_offset = 0;
 	unsigned long spi_start_address = 0;
+	const char *voltage = NULL;
 
-	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:p:Dx:lhT",
+	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:V:p:Dx:lhT",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -596,6 +649,9 @@ int main(int argc, char **argv)
 			break;
 		case 'u':
 			read_filename = optarg;
+			break;
+		case 'V':
+			voltage = optarg;
 			break;
 		case 'p':
 			holdpin = optarg;
@@ -745,6 +801,13 @@ int main(int argc, char **argv)
 			return 0;
 		}
 		printf("Chip set to %s\n", desiredchip);
+	}
+
+	if (voltage) {
+		if (!set_fpga_voltage_from_str(&em100, voltage)) {
+			printf("Failed configuring FPGA voltage.\n");
+			return 1;
+		}
 	}
 
 	if (holdpin) {
