@@ -1,11 +1,33 @@
-em100: EM100pro command line utility
+em100: EM100-Pro command-line utility
+
+This tool supports using the Dediprog EM100-Pro [1] in Linux. It supports both
+the original version and the new -G2 variant.
+
+The 'em100' device provides a way to emulate a SPI-flash chip. Various
+connectors are available to allow it to take over from the in-circuit SPI chip
+so that the SoC sees the em100's internal memory as the contents of the SPI
+flash. Images can be loaded into the em100 over USB in a few seconds, thus
+providing a much faster development cycle than is possible by reprogramming
+the SPI flash each time.
 
 Example:
-  ./em100 --stop --set M25P80 -d file.bin -v --start -t -O 0xfff00000
+  ./em100 --stop --set M25P80 -d file.bin --start -t -O 0xfff00000
+
+Major features provided by the tool include:
+
+- Set the chip being emulated (the tool supports about 600)
+- Adjust the state of the hold pin, which supports overriding the internal SPI
+- Use of several em100 devices, distinguished by their serial number
+- Terminal mode, allowing the SoC to send messages
+- Output a trace of SPI commands issued by the SoC
+- Reading / writing em100 firmware (dangerous as it can brick your em100)
+
+For help, use the -h option:
 
 Usage:
   -c|--set CHIP:                  select chip emulation
-  -d|--download FILE:             upload FILE into EM100pro
+  -d|--download FILE:             download FILE into EM100pro
+  -u|--upload FILE:               upload from EM100pro into FILE
   -r|--start:                     em100 shall run
   -s|--stop:                      em100 shall stop
   -v|--verify:                    verify EM100 content matches the file
@@ -22,4 +44,7 @@ Usage:
   -l|--list-devices               list all connected EM100pro devices
   -D|--debug:                     print debug information.
   -h|--help:                      this help text
+
+
+[1] https://www.dediprog.com/product/EM100Pro-G2
 
