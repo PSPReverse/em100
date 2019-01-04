@@ -510,7 +510,8 @@ static int set_chip_type(struct em100 *em100, const chipdesc *desc)
          */
 	int result = 0;
 	int i;
-	int fpga_voltage, chip_voltage = 0, wrong_voltage = 0;
+	int fpga_voltage, chip_voltage = 0;
+	int req_voltage = 0;
 
 	printf("Sending flash chip configuration\n");
 
@@ -528,22 +529,25 @@ static int set_chip_type(struct em100 *em100, const chipdesc *desc)
 		case 1601: /* 1.65V-2V */
 		case 1800:
 			if (fpga_voltage == 3300)
-				wrong_voltage = 1;
+				req_voltage = 18;
 			break;
 		case 2500: /* supported by both 1.8V and 3.3V FPGA */
 			break;
 		case 3300:
 			if (fpga_voltage == 1800)
-				wrong_voltage = 1;
+				req_voltage = 33;
 		}
 		break;
 	}
 
-	if (wrong_voltage) {
-		printf("Error: The current FPGA firmware (%.1fV) does not "
-			"support %s %s (%.1fV)\n", (float)fpga_voltage/1000,
-			desc->vendor, desc->name, (float)chip_voltage/1000);
-		return 0;
+	if (req_voltage) {
+		if (!set_fpga_voltage(em100, req_voltage)) {
+			printf("Error: The current FPGA firmware (%.1fV) does "
+			       "not support %s %s (%.1fV)\n",
+			       (float)fpga_voltage / 1000, desc->vendor,
+			       desc->name, (float)chip_voltage / 1000);
+			return 0;
+		}
 	}
 
 	for (i = 0; i < desc->init_len; i++) {
