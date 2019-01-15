@@ -515,6 +515,7 @@ static int set_chip_type(struct em100 *em100, const chipdesc *desc)
 static const struct option longopts[] = {
 	{"set", 1, 0, 'c'},
 	{"download", 1, 0, 'd'},
+	{"start-address", 1, 0, 'a'},
 	{"start", 0, 0, 'r'},
 	{"stop", 0, 0, 's'},
 	{"verify", 0, 0, 'v'},
@@ -540,7 +541,8 @@ static void usage(char *name)
 		"\nUsage:\n"
 		"  -c|--set CHIP:                  select chip emulation\n"
 		"  -d|--download FILE:             download FILE into EM100pro\n"
-	        "  -u|--upload FILE:               upload from EM100pro into FILE\n"
+		"  -a|--start address:             only works with -d (E.g. -d file.bin -a 0x300000)\n"
+	    "  -u|--upload FILE:               upload from EM100pro into FILE\n"
 		"  -r|--start:                     em100 shall run\n"
 		"  -s|--stop:                      em100 shall stop\n"
 		"  -v|--verify:                    verify EM100 content matches the file\n"
@@ -576,8 +578,9 @@ int main(int argc, char **argv)
 	int firmware_is_dpfw = 0;
 	unsigned int serial_number = 0;
 	unsigned long address_offset = 0;
+	unsigned long spi_start_address = 0;
 
-	while ((opt = getopt_long(argc, argv, "c:d:u:rsvtO:F:f:g:S:p:Dx:lhT",
+	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:p:Dx:lhT",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -586,6 +589,10 @@ int main(int argc, char **argv)
 		case 'd':
 			filename = optarg;
 			/* TODO: check that file exists */
+			break;
+		case 'a':
+			sscanf(optarg, "%lx", &spi_start_address);
+			printf("Spi address: 0x%08lx\n", spi_start_address);
 			break;
 		case 'u':
 			read_filename = optarg;
@@ -775,8 +782,11 @@ int main(int argc, char **argv)
 	}
 
 	if (filename) {
-		int maxlen = 0x4000000; /* largest size - 64MB */
+		int maxlen = desiredchip ? chip->size : 0x4000000; /* largest size - 64MB */
 		void *data = malloc(maxlen);
+		int done;
+		void *readback = NULL;
+
 		if (data == NULL) {
 			printf("FATAL: couldn't allocate memory\n");
 			return 1;
@@ -808,15 +818,34 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		write_sdram(&em100, (unsigned char *)data, 0x00000000, length);
+		if (desiredchip && (length != (chip->size - spi_start_address)) )
+		{
+			printf("FATAL: file size does not match to chip size.\n");
+			free(data);
+			return 1;
+		}
+
+		if (spi_start_address) {
+			readback = malloc(maxlen);
+			if (data == NULL) {
+				printf("FATAL: couldn't allocate memory(size: %x)\n", maxlen);
+				return 1;
+			}
+			done = read_sdram(&em100, readback, 0, maxlen);
+			memcpy((unsigned char*)readback + spi_start_address, data, length);
+			write_sdram(&em100, (unsigned char*)readback, 0x00000000, maxlen);
+			free(readback);
+		} else {
+			write_sdram(&em100, (unsigned char*)data, 0x00000000, length);
+		}
+
 		if (verify) {
-			int done;
-			void *readback = malloc(length);
+			readback = malloc(length);
 			if (data == NULL) {
 				printf("FATAL: couldn't allocate memory\n");
 				return 1;
 			}
-			done = read_sdram(&em100, readback, 0x00000000, length);
+			done = read_sdram(&em100, readback, spi_start_address, length);
 			if (done && (memcmp(data, readback, length) == 0))
 				printf("Verify: PASS\n");
 			else
