@@ -832,8 +832,12 @@ int main(int argc, char **argv)
 				return 1;
 			}
 			done = read_sdram(&em100, readback, 0, maxlen);
-			memcpy((unsigned char*)readback + spi_start_address, data, length);
-			write_sdram(&em100, (unsigned char*)readback, 0x00000000, maxlen);
+			if (done) {
+				memcpy((unsigned char*)readback + spi_start_address, data, length);
+				write_sdram(&em100, (unsigned char*)readback, 0x00000000, maxlen);
+			} else {
+				printf("Error: sdram readback failed\n");
+			}
 			free(readback);
 		} else {
 			write_sdram(&em100, (unsigned char*)data, 0x00000000, length);
