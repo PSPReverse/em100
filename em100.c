@@ -827,8 +827,9 @@ int main(int argc, char **argv)
 
 		if (spi_start_address) {
 			readback = malloc(maxlen);
-			if (data == NULL) {
+			if (readback == NULL) {
 				printf("FATAL: couldn't allocate memory(size: %x)\n", maxlen);
+				free(data);
 				return 1;
 			}
 			done = read_sdram(&em100, readback, 0, maxlen);
@@ -845,8 +846,9 @@ int main(int argc, char **argv)
 
 		if (verify) {
 			readback = malloc(length);
-			if (data == NULL) {
+			if (readback == NULL) {
 				printf("FATAL: couldn't allocate memory\n");
+				free(data);
 				return 1;
 			}
 			done = read_sdram(&em100, readback, spi_start_address, length);
