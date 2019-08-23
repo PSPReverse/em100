@@ -191,6 +191,11 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	fseek(f, 0, SEEK_SET);
 
 	fw = malloc(fsize);
+	if (!fw) {
+		printf("ERROR: out of memory.\n");
+		fclose(f);
+		return 0;
+	}
 	if (fread(fw, fsize, 1, f) != 1) {
 		perror(filename);
 		fclose(f);
