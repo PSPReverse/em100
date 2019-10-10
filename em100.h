@@ -48,6 +48,10 @@ int fpga_set_voltage(struct em100 *em100, int voltage_code);
 int fpga_get_voltage(struct em100 *em100, int *voltage_codep);
 int fpga_reconfigure(struct em100 *em100);
 
+/* Guessed register names */
+#define FPGA_REG_DEVID		0x40
+#define FPGA_REG_VENDID		0x42
+
 /* hexdump.c */
 void hexdump(const void *memory, size_t length);
 

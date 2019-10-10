@@ -567,6 +567,70 @@ static int set_chip_type(struct em100 *em100, const chipdesc *desc)
 	return !result;
 }
 
+/**
+ * Searches for a specific FPGA register in the chip initialisation
+ * sequence and returns the value in out.
+ *
+ * @reg1: e.g. FPGA write command (0x23)
+ * @reg2: e.g. FPGA register
+ *
+ * Returns 0 on success.
+ */
+static int get_chip_init_val(const chipdesc *desc,
+			     const uint8_t reg1,
+			     const uint8_t reg2,
+			     uint16_t *out)
+{
+	int i;
+
+	for (i = 0; i < desc->init_len; i++) {
+		if (desc->init[i][0] == reg1 && desc->init[i][1] == reg2) {
+			*out = (desc->init[i][2] << 8) | desc->init[i][3];
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+/**
+ * Tries to identify the currently emulated SPI flash by looking at
+ * known registers in the FPGA and matches those bits with the
+ * chip initialisation sequence.
+ *
+ * Returns 0 on success.
+ */
+static int get_chip_type(struct em100 *em100, const chipdesc **out)
+{
+	const chipdesc *chip;
+	uint16_t venid;
+	uint16_t devid;
+
+	/* Read manufacturer and vendor id from FPGA */
+	if (!read_fpga_register(em100, FPGA_REG_VENDID, &venid))
+		return 1;
+	if (!read_fpga_register(em100, FPGA_REG_DEVID, &devid))
+		return 1;
+
+	for (chip = chips; chip != NULL; chip++) {
+		uint16_t comp;
+
+		if (get_chip_init_val(chip, 0x23, FPGA_REG_DEVID, &comp) || devid != comp)
+			continue;
+		if (get_chip_init_val(chip, 0x23, FPGA_REG_VENDID, &comp) || venid != comp)
+			continue;
+
+		break;
+	}
+
+	if (!chip)
+		return 1;
+
+	*out = chip;
+
+	return 0;
+}
+
 static const struct option longopts[] = {
 	{"set", 1, 0, 'c'},
 	{"download", 1, 0, 'd'},
@@ -822,8 +886,20 @@ int main(int argc, char **argv)
 	}
 
 	if (read_filename) {
-		/* largest size - 64MB */
-		int maxlen = desiredchip ? chip->size : 0x4000000;
+		int maxlen = 0x4000000; /* largest size - 64MB */
+
+		if (!desiredchip) {
+			/* Read configured SPI emulation from EM100 */
+			const chipdesc *emulated_chip;
+
+			if (!get_chip_type(&em100, &emulated_chip)) {
+				printf("Configured to emulate %s\n", emulated_chip->name);
+				maxlen = emulated_chip->size;
+			}
+		} else {
+			maxlen = chip->size;
+		}
+
 		void *data = malloc(maxlen);
 		if (data == NULL) {
 			printf("FATAL: couldn't allocate memory\n");
