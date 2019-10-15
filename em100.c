@@ -597,7 +597,7 @@ static void usage(char *name)
 		"  -c|--set CHIP:                  select chip emulation\n"
 		"  -d|--download FILE:             download FILE into EM100pro\n"
 		"  -a|--start address:             only works with -d (E.g. -d file.bin -a 0x300000)\n"
-	    "  -u|--upload FILE:               upload from EM100pro into FILE\n"
+		"  -u|--upload FILE:               upload from EM100pro into FILE\n"
 		"  -r|--start:                     em100 shall run\n"
 		"  -s|--stop:                      em100 shall stop\n"
 		"  -v|--verify:                    verify EM100 content matches the file\n"
