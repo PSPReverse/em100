@@ -34,7 +34,7 @@ em100: $(SOURCES) $(INCLUDES)
 
 em100pro_chips.h: makechips.sh
 	printf "  CREATE em100pro_chips.sh & firmware images\n"
-	./makechips.sh
+	LANG=C ./makechips.sh
 
 makechips.sh: makedpfw makechips
 
