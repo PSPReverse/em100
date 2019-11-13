@@ -112,7 +112,7 @@ LED State:
 
 ## 2. FPGA related operations
 
-### 2.1. Reconfig FPGA:
+### 2.1. Reconfig FPGA
 
 USB Out:
 
@@ -129,7 +129,7 @@ Note: Please wait 2 seconds to issue any other USB commands after this command
 ```
 
 
-### 2.2. Check FPGA configuration status:
+### 2.2. Check FPGA configuration status
 
 USB Out:
 
@@ -170,7 +170,7 @@ DCNT: Data count, 0: read fail, 2: read success
 Value: Register Value
 ```
 
-### 2.4. Reconfig FPGA:
+### 2.4. Reconfigure FPGA
 
 USB Out:
 
@@ -187,7 +187,97 @@ RegAddr: Register Address
 Value: Register Value
 ```
 
-## 3. SPI flash related operations:
+See chapter 7 for more information on FPGA commands.
+
+### 2.5. Switch FPGA configuration image
+
+```EM100Pro-G2 only```
+
+EM100Pro-G2 has two FPGA images, one for 1.8V and one for 3.3V SPI flash devices.
+The EM100Pro-G2 defaults to the 3.3V image on power-on.
+
+USB command to switch between the two images.
+
+USB Out:
+
+| Command | Parameter                 | Data |
+|---------|---------------------------|------|
+| 0x24    | Address (4B, high to low) | None |
+
+USB In:
+
+```NONE```
+
+```
+Address = 0x00000: Switch to 3.3V image
+Address = 0x78000: Switch to 1.8V image
+```
+
+After sending the `Switch FPGA configuration image` command, check bit 15 of firmware version (DWORD):
+
+```
+0: 3.3V
+1: 1.8V
+```
+
+Minimum firmware version requirements:
+
+Device      | MCU version | FPGA version |
+------------|-------------|--------------|
+EM100Pro-G2 | 3.3         | 2.014        |
+
+
+### 2.6. FPGA Reconfiguration
+
+Description of some FPGA command registers (incomplete).
+
+#### 2.6.1. Default Address Length Setting
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x4F    | WO  | Set default address space |
+
+| Bit | Description                                    | Initial value |
+|-----|------------------------------------------------|---------------|
+| 0   | Command address length: 0: 3 bytes, 1: 4 bytes | 0             |
+
+Minimum firmware version requirements:
+
+Device      | MCU version | FPGA version |
+------------|-------------|--------------|
+EM100Pro    | 2.27        | 0.091        |
+EM100Pro-G2 | 3.3         | 2.014        |
+
+#### 2.6.2. CS Pin Selection
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0xE0    | WO  | Set default address space |
+
+| Bit | Description                  | Initial value |
+|-----|------------------------------|---------------|
+| 0   | 0: Select CS1, 1: Select CS2 | 0             |
+
+
+Note:
+CS selection has different internal behavior on EM100Pro and EM100Pro-G2. On
+EM100Pro, switching to CS2 will use internal memory starting at 0x80000000. On
+EM100Pro-G2, only the CS pin is switched. Since  the memory space is shared, only
+one chip can be emulated at a time.
+
+
+Minimum firmware version requirements:
+
+Device      | MCU version | FPGA version |
+------------|-------------|--------------|
+EM100Pro-G2 | 3.3         | 2.014        |
+
+
+## 3. SPI flash related operations
 
 ### 3.1. Get SPI flash ID
 
@@ -324,7 +414,7 @@ USB In:
 | None   |Data read from SDRAM |
 
 
-## 5. SPI Hyperterminal related operations:
+## 5. SPI Hyperterminal related operations
 
 ### 5.1. Read HT Registers
 
@@ -409,7 +499,7 @@ Timeout: timeout for MCU to read data from the FPGA uFIFO, unit is ms.
 DCNT: number of bytes successfully read from uFIFO.
 ```
 
-## 6. SPI Trace related operations:
+## 6. SPI Trace related operations
 
 ### 6.1. Get SPI Trace
 
@@ -424,7 +514,6 @@ USB In:
 | Result | Data      |
 |--------|-----------|
 | None   | SPI Trace |
-
 
 ```
  TraceLen: The unit of TraceLen is 4KB.
