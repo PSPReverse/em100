@@ -148,7 +148,7 @@ USB In:
 
 ```
 Pass: 1, Fail: 0
-````
+```
 
 ### 2.3. Read FPGA Registers
 
@@ -187,7 +187,7 @@ RegAddr: Register Address
 Value: Register Value
 ```
 
-See chapter 7 for more information on FPGA commands.
+See chapter 2.6 for more information on FPGA commands.
 
 ### 2.5. Switch FPGA configuration image
 
@@ -227,11 +227,103 @@ Device      | MCU version | FPGA version |
 EM100Pro-G2 | 3.3         | 2.014        |
 
 
-### 2.6. FPGA Reconfiguration
+### 2.6. FPGA Registers
 
-Description of some FPGA command registers (incomplete).
+Description of some FPGA command registers (incomplete). Each register
+has a 1 byte address and is 2 bytes wide (referred to as a0, a1). This includes
+some information of the former file protocol-notes.txt. Please help complete this
+information.
 
-#### 2.6.1. Default Address Length Setting
+#### 2.6.1. ????
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x32    | ?/W | ??                        |
+
+Written through the config files for each emulated chip.
+Data written is always observed as 0xff 0xff (?)
+
+#### 2.6.2. ????
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x38    | ?/W | ??                        |
+
+Written through the config files for each emulated chip.
+Data written is various values (?)
+
+#### 2.6.3. Set Chip Size
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x3a    | ?/W | Set Chip Size             |
+
+Written through the config files for each emulated chip.
+Sets chip size to (a1+1) * 0x10000 (?)
+
+#### 2.6.4. ????
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x40    | ?/W | ??                        |
+
+Written through the config files for each emulated chip.
+sometimes: a0 = lowbyte of device id (for 16bit did?), a1 = device id (for 8bit
+did)
+
+#### 2.6.5. ????
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x42    | ?/W | ??                        |
+
+Written through the config files for each emulated chip.
+a0 = vendor id, a1 = highbyte of device id for 16bit did or device id for 8bit did (?)
+
+#### 2.6.6. ????
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x44    | ?/W | ??                        |
+
+Written through the config files for each emulated chip.
+Always 0x03 0x18 (?)
+
+#### 2.6.7. ????
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x46    | ?/W | ??                        |
+
+Written through the config files for each emulated chip.
+a0 = various, a1 = always 0x30? (?)
+
+#### 2.6.8. ????
+
+FPGA command:
+
+| Address | R/W | Description               |
+|---------|-----|---------------------------|
+| 0x48    | ?/W | ??                        |
+
+Written through the config files for each emulated chip.
+a0 = various, a1 = always 0xc0? (?)
+
+#### 2.6.9. Default Address Length Setting
 
 FPGA command:
 
@@ -250,7 +342,7 @@ Device      | MCU version | FPGA version |
 EM100Pro    | 2.27        | 0.091        |
 EM100Pro-G2 | 3.3         | 2.014        |
 
-#### 2.6.2. CS Pin Selection
+#### 2.6.10. CS Pin Selection
 
 FPGA command:
 
