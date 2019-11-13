@@ -14,6 +14,7 @@
 ### 1.1. Get Firmware / FPGA version
 
 USB Out:
+
 | Command | Parameter | Data |
 |---------|-----------|------|
 | 0x10    | None      | None |
@@ -92,6 +93,7 @@ Value:
 ### 1.4. Set LED
 
 USB Out:
+
 | Command | Parameter      | Data |
 |---------|----------------|------|
 | 0x13    | LED State (1B) | None |
@@ -113,6 +115,7 @@ LED State:
 ### 2.1. Reconfig FPGA:
 
 USB Out:
+
 | Command | Parameter | Data |
 |---------|-----------|------|
 | 0x20    | None      | None |
@@ -129,11 +132,13 @@ Note: Please wait 2 seconds to issue any other USB commands after this command
 ### 2.2. Check FPGA configuration status:
 
 USB Out:
+
 | Command | Parameter | Data |
 |---------|-----------|------|
 | 0x21    | None      | None |
 
 USB In:
+
 | Result    | Data |
 |-----------|------|
 | Pass/Fail | None |
@@ -148,11 +153,13 @@ Pass: 1, Fail: 0
 ### 2.3. Read FPGA Registers
 
 USB Out:
+
 | Command | Parameter    | Data |
 |---------|--------------|------|
 | 0x22    | RegAddr (1B) | None |
 
 USB In:
+
 | Result | Data       |
 |--------|------------|
 | DCNT   | Value (2B) |
@@ -166,6 +173,7 @@ Value: Register Value
 ### 2.4. Reconfig FPGA:
 
 USB Out:
+
 | Command | Parameter   | Data      |
 |---------|-------------|-----------|
 | 0x23    | RegAddr(1B) | Value(2B) |
@@ -271,6 +279,7 @@ USB In:
 ### 3.6. Erase SPI flash sector:
 
 USB Out:
+
 | Command | Parameter    | Data |
 |---------|--------------|------|
 | 0x37    | SectorNo(1B) | None |
@@ -369,6 +378,7 @@ USB Out for data:
 | Data to be written to dFIFO |
 
 USB In:
+
 | Result | Data |
 |--------|------|
 | DCNT   | None |
