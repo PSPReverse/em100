@@ -119,11 +119,21 @@ int firmware_dump(struct em100 *em100, const char *filename,
 	}
 
 	if (firmware_is_dpfw) {
-		int fpga_size = 0, mcu_size = 0;
+		int fpga_size = 0, mcu_size = 0, hdrversion = 0;
 		char all_ff[256];
 		char mcu_version[8];
 		char fpga_version[8];
 		unsigned char header[0x100];
+
+		switch (em100->hwversion) {
+		case HWVERSION_EM100PRO:
+			hdrversion=1;
+			break;
+		default:
+			printf("Dumping DPFW firmware on hardware version %u is "
+					"not yet supported.\n", em100->hwversion);
+			exit(1);
+		}
 
 		memset(all_ff, 255, sizeof(all_ff));
 		for (i = 0; i < 0x100000; i+=0x100) {
@@ -156,7 +166,8 @@ int firmware_dump(struct em100 *em100, const char *filename,
 				em100->fpga >> 8 & 0x7f, em100->fpga & 0xff);
 
 		memset(header, 0, 0x100);
-		memcpy(header, "em100pro", 8);
+		if (hdrversion == 1)
+			memcpy(header, "em100pro", 8);
 		memcpy(header + 0x28, "WFPD", 4);
 		memcpy(header + 0x14, mcu_version, 4);
 		memcpy(header + 0x1e, fpga_version, 4);
@@ -192,6 +203,16 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	char fpga_version[MAX_VERSION_LENGTH + 1],
 	     mcu_version[MAX_VERSION_LENGTH + 1];
 
+	switch (em100->hwversion) {
+	case HWVERSION_EM100PRO:
+		printf("Detected EM100Pro-G1.\n");
+		break;
+	default:
+		printf("Updating EM100Pro firmware on hardware version %u is "
+				"not yet supported.\n", em100->hwversion);
+		exit(1);
+	}
+
 	printf("\nAttempting firmware update with file %s\n", filename);
 
 	f = fopen(filename, "rb");
@@ -223,8 +244,8 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	}
 	fclose(f);
 
-	if (memcmp(fw, "em100pro", 8) != 0 ||
-			memcmp(fw + 0x28, "WFPD", 4) != 0) {
+	if (em100->hwversion == HWVERSION_EM100PRO && (memcmp(fw, "em100pro", 8) != 0 ||
+			memcmp(fw + 0x28, "WFPD", 4) != 0)) {
 		printf("ERROR: Not an EM100Pro firmware file.\n");
 		free(fw);
 		return 0;

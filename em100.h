@@ -29,6 +29,10 @@ struct em100 {
 	uint8_t hwversion;
 };
 
+/* Hardware versions */
+#define HWVERSION_EM100PRO    4
+#define HWVERSION_EM100PRO_G2 6
+
 #define BULK_SEND_TIMEOUT	5000	/* sentinel value */
 
 /* usb.c */
