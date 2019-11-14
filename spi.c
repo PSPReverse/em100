@@ -22,7 +22,7 @@
 
 /* SPI flash related operations */
 
-int get_spi_flash_id(struct em100 *em100)
+uint32_t get_spi_flash_id(struct em100 *em100)
 {
 	unsigned char cmd[16];
 	unsigned char data[512];

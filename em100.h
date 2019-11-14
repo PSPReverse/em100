@@ -62,7 +62,7 @@ int write_sdram(struct em100 *em100, unsigned char *data, int address,
 		int length);
 
 /* spi.c */
-int get_spi_flash_id(struct em100 *em100);
+uint32_t get_spi_flash_id(struct em100 *em100);
 int erase_spi_flash(struct em100 *em100);
 int poll_spi_flash_status(struct em100 *em100);
 int read_spi_flash_page(struct em100 *em100, int addr, unsigned char *blk);
@@ -157,5 +157,9 @@ int read_spi_trace(struct em100 *em100, int display_terminal,
 		   unsigned long addr_offset);
 int read_spi_terminal(struct em100 *em100, int print_counter);
 int init_spi_terminal(struct em100 *em100);
+
+/* Misc. */
+
+#define MB * 1024 * 1024
 
 #endif

@@ -78,16 +78,31 @@ static void put_le32(unsigned char *out, uint32_t val)
 int firmware_dump(struct em100 *em100, const char *filename,
 		int firmware_is_dpfw)
 {
-#define ROM_SIZE (2*1024*1024)
-	unsigned char data[ROM_SIZE];
+	unsigned char *data;
 	int i;
+	uint32_t id, rom_size = 0;
 	FILE *fw;
 
+	id = get_spi_flash_id(em100);
+	switch (id) {
+	case 0x202015:
+		rom_size = 2 MB;
+		break;
+	default:
+		printf("Unknown SPI flash id = %06x. Please report\n", id);
+		return 1;
+	}
+	data = malloc(rom_size);
+	if (data == NULL) {
+		perror("Out of memory.\n");
+		exit(1);
+	}
+	memset(data, 0, rom_size);
+
 	printf("\nWriting EM100Pro firmware to file %s\n", filename);
-	memset(data, 0, ROM_SIZE);
-	for (i=0; i < ROM_SIZE; i+=256) {
+	for (i=0; i < rom_size; i+=256) {
 		if((i & 0x7fff) == 0)
-			print_progress(i * 100 / ROM_SIZE);
+			print_progress(i * 100 / rom_size);
 		if (!read_spi_flash_page(em100, i, data+i)) {
 			if (!read_spi_flash_page(em100, i, data+i))
 				if (!read_spi_flash_page(em100, i, data+i))
@@ -99,6 +114,7 @@ int firmware_dump(struct em100 *em100, const char *filename,
 	fw = fopen(filename, "wb");
 	if (!fw) {
 		perror(filename);
+		free(data);
 		return 0;
 	}
 
@@ -117,6 +133,7 @@ int firmware_dump(struct em100 *em100, const char *filename,
 		if (i == 0x100000) {
 			printf("Can't parse device firmware. Please extract"
 					" raw firmware instead.\n");
+			free(data);
 			exit(1);
 		}
 		fpga_size = i;
@@ -128,6 +145,7 @@ int firmware_dump(struct em100 *em100, const char *filename,
 		if (i == 0xfff00) {
 			printf("Can't parse device firmware. Please extract"
 					" raw firmware instead.\n");
+			free(data);
 			exit(1);
 		}
 		mcu_size = i;
@@ -150,14 +168,15 @@ int firmware_dump(struct em100 *em100, const char *filename,
 		fwrite(data, fpga_size, 1, fw);
 		fwrite(data + 0x100100, mcu_size, 1, fw);
 	} else {
-		if (fwrite(data, ROM_SIZE, 1, fw) != 1)
+		if (fwrite(data, rom_size, 1, fw) != 1)
 			printf("ERROR: Couldn't write %s\n", filename);
 	}
 	fclose(fw);
 
 #if DEBUG
-	hexdump(data, ROM_SIZE);
+	hexdump(data, rom_size);
 #endif
+	free(data);
 	return 0;
 }
 
