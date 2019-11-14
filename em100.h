@@ -26,6 +26,7 @@ struct em100 {
 	uint16_t mcu;
 	uint16_t fpga;
 	uint32_t serialno;
+	uint8_t hwversion;
 };
 
 #define BULK_SEND_TIMEOUT	5000	/* sentinel value */

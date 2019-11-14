@@ -196,15 +196,16 @@ static int set_fpga_voltage_from_str(struct em100 *em100,
 }
 
 /**
- * get_serialno: fetch device's serial number
+ * get_device_info: fetch device's serial number and hardware version
  * @param em100: initialized em100 device structure
  */
-static int get_serialno(struct em100 *em100)
+static int get_device_info(struct em100 *em100)
 {
 	unsigned char data[256];
 	if (read_spi_flash_page(em100, 0x1fff00, data)) {
 		em100->serialno = (data[5] << 24) | (data[4] << 16) | \
 				  (data[3] << 8) | data[2];
+		em100->hwversion = data[1];
 		return 1;
 	}
 	return 0;
@@ -249,7 +250,9 @@ static int set_serialno(struct em100 *em100, unsigned int serialno)
 		printf("Error: Could not write SPI flash.\n");
 		return 0;
 	}
-	get_serialno(em100);
+
+	/* Re-read serial number */
+	get_device_info(em100);
 	if (em100->serialno != 0xffffffff)
 		printf("New serial number: DP%06d\n", em100->serialno);
 	else
@@ -334,8 +337,8 @@ static int em100_init(struct em100 *em100, libusb_context *ctx,
 		return 0;
 	}
 
-	if (!get_serialno(em100)) {
-		printf("Failed to fetch serial number.\n");
+	if (!get_device_info(em100)) {
+		printf("Failed to fetch serial number and hardware version.\n");
 		return 0;
 	}
 
@@ -819,6 +822,7 @@ int main(int argc, char **argv)
 		printf("FPGA version: %d.%02d\n", em100.fpga >> 8,
 				em100.fpga & 0xff);
 	}
+	printf("Hardware version: %u\n", em100.hwversion);
 
 	if (em100.serialno != 0xffffffff)
 		printf("Serial number: DP%06d\n", em100.serialno);
