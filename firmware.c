@@ -129,6 +129,9 @@ int firmware_dump(struct em100 *em100, const char *filename,
 		case HWVERSION_EM100PRO:
 			hdrversion=1;
 			break;
+		case HWVERSION_EM100PRO_G2:
+			hdrversion=2;
+			break;
 		default:
 			printf("Dumping DPFW firmware on hardware version %u is "
 					"not yet supported.\n", em100->hwversion);
@@ -166,8 +169,14 @@ int firmware_dump(struct em100 *em100, const char *filename,
 				em100->fpga >> 8 & 0x7f, em100->fpga & 0xff);
 
 		memset(header, 0, 0x100);
-		if (hdrversion == 1)
+		switch (hdrversion) {
+		case 1:
 			memcpy(header, "em100pro", 8);
+			break;
+		case 2:
+			memcpy(header, "EM100Pro-G2", 11);
+			break;
+		}
 		memcpy(header + 0x28, "WFPD", 4);
 		memcpy(header + 0x14, mcu_version, 4);
 		memcpy(header + 0x1e, fpga_version, 4);
@@ -205,7 +214,10 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 
 	switch (em100->hwversion) {
 	case HWVERSION_EM100PRO:
-		printf("Detected EM100Pro-G1.\n");
+		printf("Detected EM100Pro (original).\n");
+		break;
+	case HWVERSION_EM100PRO_G2:
+		printf("Detected EM100Pro-G2.\n");
 		break;
 	default:
 		printf("Updating EM100Pro firmware on hardware version %u is "
@@ -246,7 +258,14 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 
 	if (em100->hwversion == HWVERSION_EM100PRO && (memcmp(fw, "em100pro", 8) != 0 ||
 			memcmp(fw + 0x28, "WFPD", 4) != 0)) {
-		printf("ERROR: Not an EM100Pro firmware file.\n");
+		printf("ERROR: Not an EM100Pro (original) firmware file.\n");
+		free(fw);
+		return 0;
+	}
+
+	if (em100->hwversion == HWVERSION_EM100PRO_G2 && (memcmp(fw, "EM100Pro-G2", 11) != 0 ||
+			memcmp(fw + 0x28, "WFPD", 4) != 0)) {
+		printf("ERROR: Not an EM100Pro-G2 firmware file.\n");
 		free(fw);
 		return 0;
 	}
@@ -263,7 +282,8 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	strncpy(fpga_version, (char *)fw + 0x1e, MAX_VERSION_LENGTH);
 	fpga_version[MAX_VERSION_LENGTH] = '\0';
 
-	printf("EM100Pro Update File: %s\n", filename);
+	printf("EM100Pro%s Update File: %s\n",
+			em100->hwversion == HWVERSION_EM100PRO_G2 ? "-G2" : "", filename);
 	printf("  Installed version:  MCU %d.%d, FPGA %d.%d (%s)\n",
 			em100->mcu >> 8, em100->mcu & 0xff,
 			em100->fpga >> 8 & 0x7f, em100->fpga & 0xff,
@@ -348,7 +368,7 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 
 	free(fw);
 
-	/* Write magic update page */
+	/* Write magic update tag '.UBOOTU.' */
 	memset(page, 0x00, 256);
 	page[0] = 0xaa;
 	page[1] = 0x55;
