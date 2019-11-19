@@ -23,36 +23,57 @@ ifneq ($(Q),)
 endif
 endif
 
-CFLAGS?=-O2 -g
-CFLAGS+=-Wall -Werror
+CFLAGS ?=-O2 -g -fomit-frame-pointer
+CFLAGS += $(shell $(PKG_CONFIG) --cflags libusb-1.0)
+
+CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wmissing-prototypes
+CFLAGS += -Wwrite-strings -Wredundant-decls -Wstrict-aliasing -Wshadow -Wextra
+CFLAGS += -Wno-unused-but-set-variable
+# Remove after fixing
+CFLAGS +=-Wno-sign-compare -Wno-discarded-qualifiers
+
+LDFLAGS ?=
+LDFLAGS += $(shell $(PKG_CONFIG) --libs libusb-1.0)
+
 CC?=gcc
 PKG_CONFIG?=pkg-config
 
 SOURCES=em100.c firmware.c fpga.c hexdump.c sdram.c spi.c system.c trace.c usb.c
-INCLUDES=em100pro_chips.h em100.h
+OBJECTS=$(SOURCES:.c=.o)
 
-all: em100
+all: dep em100
 
-em100: $(SOURCES) $(INCLUDES)
-	printf "  CC     em100\n"
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $(SOURCES) \
-		$(shell $(PKG_CONFIG) --cflags --libs libusb-1.0)
+em100: $(OBJECTS)
+	printf "  LD     em100\n"
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJECTS)
 
 em100pro_chips.h: makechips.sh
 	printf "  CREATE em100pro_chips.sh & firmware images\n"
 	LANG=C ./makechips.sh
 
-makechips.sh: makedpfw makechips
-
 %: %.c
-	printf "  CC     $@\n"
+	printf "  CC+LD  $@\n"
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $<
+
+%.o: %.c
+	printf "  CC     $@\n"
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+dep: $(SOURCES) em100pro_chips.h
+	$(CC) $(CFLAGS) -MM $(SOURCES) > .dependencies
+	#perl -pi -e 's,^xz,xz/xz,g' .dependencies
+
+makechips.sh: makedpfw makechips
 
 clean:
 	rm -f em100 makedpfw makechips
+	rm -f $(OBJECTS)
 	rm -rf configs firmware
+	rm -f .dependencies
 
 distclean: clean
-	rm em100pro_chips.h
+	rm -f em100pro_chips.h
+
+-include .dependencies
 
 .PHONY: clean distclean
