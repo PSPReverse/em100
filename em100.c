@@ -615,7 +615,7 @@ static int get_chip_type(struct em100 *em100, const chipdesc **out)
 	if (!read_fpga_register(em100, FPGA_REG_DEVID, &devid))
 		return 1;
 
-	for (chip = chips; chip != NULL; chip++) {
+	for (chip = chips; chip->name != NULL; chip++) {
 		uint16_t comp;
 
 		if (get_chip_init_val(chip, 0x23, FPGA_REG_DEVID, &comp) || devid != comp)
