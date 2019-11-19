@@ -20,6 +20,9 @@
 
 #include <libusb.h>
 
+#define __unused __attribute__((unused))
+#define __packed __attribute__((packed))
+
 struct em100 {
 	libusb_device_handle *dev;
 	libusb_context *ctx;

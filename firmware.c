@@ -184,7 +184,7 @@ int firmware_dump(struct em100 *em100, const char *filename,
 	}
 	fclose(fw);
 
-#if DEBUG
+#ifdef DEBUG
 	hexdump(data, rom_size);
 #endif
 	free(data);

@@ -29,7 +29,8 @@
 
 volatile int do_exit_flag = 0;
 
-void exit_handler(int sig) {
+static void exit_handler(int sig __unused)
+{
 	do_exit_flag = 1;
 }
 
