@@ -32,6 +32,16 @@ struct em100 {
 	uint8_t hwversion;
 };
 
+#define NUM_INIT_ENTRIES 212
+#define BYTES_PER_INIT_ENTRY 4
+typedef struct {
+	const char *vendor;
+	const char *name;
+	unsigned int size;
+	uint8_t init[NUM_INIT_ENTRIES][BYTES_PER_INIT_ENTRY];
+	int init_len;
+} chipdesc;
+
 /* Hardware versions */
 #define HWVERSION_EM100PRO    4
 #define HWVERSION_EM100PRO_G2 6
@@ -165,8 +175,26 @@ int read_spi_trace(struct em100 *em100, int display_terminal,
 int read_spi_terminal(struct em100 *em100, int print_counter);
 int init_spi_terminal(struct em100 *em100);
 
+/* Archive handling */
+typedef struct {
+	unsigned char *address;
+	size_t length;
+	int alloc;
+} TFILE;
+TFILE *tar_find(TFILE *tfile, char *name, int casesensitive);
+TFILE *tar_load_compressed(char *filename);
+int tar_for_each(TFILE *tfile, int (*run)(char *, TFILE *, void *, int), void *data);
+int tar_close(TFILE *tfile);
+int tar_ls(TFILE *tfile);
+int test_tar(void);
+
 /* Misc. */
 
 #define MB * 1024 * 1024
+#define FILENAME_BUFFER_SIZE 1024
+char *get_em100_file(char *name);
+
+/* Chips */
+int parse_dcfg(chipdesc *chip, TFILE *dcfg);
 
 #endif

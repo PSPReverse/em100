@@ -22,10 +22,15 @@
 #include <signal.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <wordexp.h>
+
 #include "em100.h"
 
-/* SPI flash chips parameters definition */
-#include "em100pro_chips.h"
+TFILE *configs;
+char *database_version;
 
 volatile int do_exit_flag = 0;
 
@@ -517,7 +522,7 @@ static int set_chip_type(struct em100 *em100, const chipdesc *desc)
 	int fpga_voltage, chip_voltage = 0;
 	int req_voltage = 0;
 
-	printf("Sending flash chip configuration\n");
+	printf("Configuring SPI flash chip emulation.\n");
 
 	memset(cmd, 0, 16);
 
@@ -597,6 +602,31 @@ static int get_chip_init_val(const chipdesc *desc,
 	return 1;
 }
 
+typedef struct {
+	uint16_t venid;
+	uint16_t devid;
+	int found;
+	chipdesc chip;
+} vendev_t;
+
+static int get_chip_type_entry(char *name __unused, TFILE *dcfg, void *data, int ok __unused)
+{
+	uint16_t comp;
+	chipdesc chip;
+
+	vendev_t *v = (vendev_t *)data;
+
+	parse_dcfg(&chip, dcfg);
+
+	if (get_chip_init_val(&chip, 0x23, FPGA_REG_DEVID, &comp) || v->devid != comp)
+		return 0;
+	if (get_chip_init_val(&chip, 0x23, FPGA_REG_VENDID, &comp) || v->venid != comp)
+		return 0;
+	v->found = 1;
+	v->chip = chip;
+	return 1;
+}
+
 /**
  * Tries to identify the currently emulated SPI flash by looking at
  * known registers in the FPGA and matches those bits with the
@@ -604,62 +634,109 @@ static int get_chip_init_val(const chipdesc *desc,
  *
  * Returns 0 on success.
  */
-static int get_chip_type(struct em100 *em100, const chipdesc **out)
+static int get_chip_type(struct em100 *em100, chipdesc *out)
 {
-	const chipdesc *chip;
-	uint16_t venid;
-	uint16_t devid;
+	vendev_t v;
 
 	/* Read manufacturer and vendor id from FPGA */
-	if (!read_fpga_register(em100, FPGA_REG_VENDID, &venid))
+	if (!read_fpga_register(em100, FPGA_REG_VENDID, &v.venid))
 		return 1;
-	if (!read_fpga_register(em100, FPGA_REG_DEVID, &devid))
-		return 1;
-
-	for (chip = chips; chip->name != NULL; chip++) {
-		uint16_t comp;
-
-		if (get_chip_init_val(chip, 0x23, FPGA_REG_DEVID, &comp) || devid != comp)
-			continue;
-		if (get_chip_init_val(chip, 0x23, FPGA_REG_VENDID, &comp) || venid != comp)
-			continue;
-
-		break;
-	}
-
-	if (!chip->name)
+	if (!read_fpga_register(em100, FPGA_REG_DEVID, &v.devid))
 		return 1;
 
-	*out = chip;
+	tar_for_each(configs, get_chip_type_entry, (void *)&v);
+	if (!v.found)
+		return 1;
+
+	*out = v.chip;
+
+	return 0;
+}
+
+static int list_chips_entry(char *name __unused, TFILE *file, void *data __unused, int ok __unused)
+{
+	static chipdesc chip;
+	/* Is the file a dcfg file? Then print the name, otherwise skip. */
+
+	if (!parse_dcfg(&chip, file))
+		printf("  • %s %s\n", chip.vendor, chip.name);
 
 	return 0;
 }
 
 static chipdesc *setup_chips(const char *desiredchip)
 {
-	const chipdesc *chip = chips;
+	static chipdesc chip;
+	configs = tar_load_compressed(get_em100_file("configs.tar.xz"));
+	if (!configs) {
+		printf("Can't find chip configs in $EM100_HOME/configs.tar.xz.\n");
+		return NULL;
+	}
+
+	TFILE *version = tar_find(configs,"configs/VERSION", 1);
+	if (!version) {
+		printf("Can't find VERSION of chip configs.\n");
+		return NULL;
+	}
+	database_version = (char *)version->address;
+	tar_close(version);
+
 	if (desiredchip) {
-		do {
-			if (strcasecmp(desiredchip, chip->name) == 0) {
-				printf("will emulate '%s'\n", chip->name);
-				break;
-			}
-		} while ((++chip)->name);
-
-		if (chip->name == NULL) {
-			printf("Supported chips:\n");
-			chip = chips;
-			do {
-				printf("%s ", chip->name);
-			} while ((++chip)->name);
-			printf("\n\nCould not find emulation for '%s'.\n",
+		char chipname[256];
+		sprintf(chipname, "configs/%s.cfg", desiredchip);
+		TFILE *dcfg = tar_find(configs, chipname, 0);
+		if (!dcfg) {
+			printf("Supported chips:\n\n");
+			tar_for_each(configs, list_chips_entry, NULL);
+			printf("\nCould not find a chip matching '%s' to be emulated.\n",
 					desiredchip);
-
 			return NULL;
 		}
-
+		parse_dcfg(&chip, dcfg);
+		tar_close(dcfg);
+		return &chip;
 	}
-	return chip;
+	return NULL;
+}
+
+static char *get_em100_home(void)
+{
+	static char directory[FILENAME_BUFFER_SIZE] = "\0";
+
+	if (directory[0] != 0)
+		return directory;
+
+	/* find out file */
+	wordexp_t p;
+	char *em100_home = getenv("EM100_HOME");
+	if (em100_home)
+		wordexp("$EM100_HOME/", &p, 0);
+	else
+		wordexp("$HOME/.em100/", &p, 0);
+
+	strncpy(directory, p.we_wordv[0], FILENAME_BUFFER_SIZE - 1);
+	wordfree(&p);
+
+	DIR *dir = opendir(directory);
+	if (dir) {
+		// success
+	} else if (errno == ENOENT) {
+		mkdir(directory, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	} else {
+		perror("EM100_HOME inaccessible");
+		directory[0]=0;
+		return NULL;
+	}
+
+	return directory;
+}
+
+char *get_em100_file(char *name)
+{
+	char file[FILENAME_BUFFER_SIZE];
+	strncpy(file, get_em100_home(), FILENAME_BUFFER_SIZE);
+	strncat(file, name, FILENAME_BUFFER_SIZE - strlen(file) - 1);
+	return strdup(file);
 }
 
 static const struct option longopts[] = {
@@ -813,7 +890,7 @@ int main(int argc, char **argv)
 	}
 
 	const chipdesc *chip = setup_chips(desiredchip);
-	if (!chip)
+	if (desiredchip && !chip)
 		return 1;
 
 	printf("MCU version: %d.%02d\n", em100.mcu >> 8, em100.mcu & 0xff);
@@ -842,7 +919,7 @@ int main(int argc, char **argv)
 		printf("Serial number: EM%06d\n", em100.serialno);
 	else
 		printf("Serial number: N.A.\n");
-	printf("SPI flash database: %s\n", VERSION);
+	printf("SPI flash database: %s\n", database_version);
 	get_current_state(&em100);
 	get_current_pin_state(&em100);
 	printf("\n");
@@ -890,7 +967,7 @@ int main(int argc, char **argv)
 			printf("Failed configuring chip type.\n");
 			return 0;
 		}
-		printf("Chip set to %s\n", desiredchip);
+		printf("Chip set to %s %s.\n", chip->vendor, chip->name);
 	}
 
 	if (voltage) {
@@ -912,11 +989,11 @@ int main(int argc, char **argv)
 
 		if (!desiredchip) {
 			/* Read configured SPI emulation from EM100 */
-			const chipdesc *emulated_chip;
+			chipdesc emulated_chip;
 
 			if (!get_chip_type(&em100, &emulated_chip)) {
-				printf("Configured to emulate %s\n", emulated_chip->name);
-				maxlen = emulated_chip->size;
+				printf("Configured to emulate %dkB chip\n", emulated_chip.size / 1024);
+				maxlen = emulated_chip.size;
 			}
 		} else {
 			maxlen = chip->size;

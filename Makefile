@@ -29,6 +29,7 @@ CFLAGS += $(shell $(PKG_CONFIG) --cflags libusb-1.0)
 CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wmissing-prototypes
 CFLAGS += -Wwrite-strings -Wredundant-decls -Wstrict-aliasing -Wshadow -Wextra
 CFLAGS += -Wno-unused-but-set-variable
+CFLAGS += -DXZ_USE_CRC64 -DXZ_DEC_ANY_CHECK -Ixz
 # Remove after fixing
 CFLAGS += -Wno-sign-compare -Wno-discarded-qualifiers
 
@@ -38,7 +39,9 @@ LDFLAGS += $(shell $(PKG_CONFIG) --libs libusb-1.0)
 CC ?= gcc
 PKG_CONFIG ?= pkg-config
 
+XZ = xz/xz_crc32.c  xz/xz_crc64.c  xz/xz_dec_bcj.c  xz/xz_dec_lzma2.c  xz/xz_dec_stream.c
 SOURCES = em100.c firmware.c fpga.c hexdump.c sdram.c spi.c system.c trace.c usb.c
+SOURCES += chips.c tar.c $(XZ)
 OBJECTS = $(SOURCES:.c=.o)
 
 all: dep em100
