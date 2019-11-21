@@ -15,7 +15,13 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+# Make is silent per default, but 'make V=1' will show all compiler calls.
+Q:=@
+ifneq ($(V),1)
+ifneq ($(Q),)
 .SILENT:
+endif
+endif
 
 CFLAGS?=-O2 -g
 CFLAGS+=-Wall -Werror
