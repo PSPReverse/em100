@@ -45,7 +45,7 @@ all: dep em100
 
 em100: $(OBJECTS)
 	printf "  LD     em100\n"
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $(OBJECTS) $(LDFLAGS)
 
 em100pro_chips.h: makechips.sh
 	printf "  CREATE em100pro_chips.sh & firmware images\n"
