@@ -635,6 +635,33 @@ static int get_chip_type(struct em100 *em100, const chipdesc **out)
 	return 0;
 }
 
+static chipdesc *setup_chips(const char *desiredchip)
+{
+	const chipdesc *chip = chips;
+	if (desiredchip) {
+		do {
+			if (strcasecmp(desiredchip, chip->name) == 0) {
+				printf("will emulate '%s'\n", chip->name);
+				break;
+			}
+		} while ((++chip)->name);
+
+		if (chip->name == NULL) {
+			printf("Supported chips:\n");
+			chip = chips;
+			do {
+				printf("%s ", chip->name);
+			} while ((++chip)->name);
+			printf("\n\nCould not find emulation for '%s'.\n",
+					desiredchip);
+
+			return NULL;
+		}
+
+	}
+	return chip;
+}
+
 static const struct option longopts[] = {
 	{"set", 1, 0, 'c'},
 	{"download", 1, 0, 'd'},
@@ -780,32 +807,14 @@ int main(int argc, char **argv)
 		}
 	}
 
-	const chipdesc *chip = chips;
-	if (desiredchip) {
-		do {
-			if (strcasecmp(desiredchip, chip->name) == 0) {
-				printf("will emulate '%s'\n", chip->name);
-				break;
-			}
-		} while ((++chip)->name);
-
-		if (chip->name == NULL) {
-			printf("Supported chips:\n");
-			chip = chips;
-			do {
-				printf("%s ", chip->name);
-			} while ((++chip)->name);
-			printf("\n\nCould not find emulation for '%s'.\n",
-					desiredchip);
-
-			return 1;
-		}
-	}
-
 	struct em100 em100;
 	if (!em100_attach(&em100, bus, device, serial_number)) {
 		return 1;
 	}
+
+	const chipdesc *chip = setup_chips(desiredchip);
+	if (!chip)
+		return 1;
 
 	printf("MCU version: %d.%02d\n", em100.mcu >> 8, em100.mcu & 0xff);
 	if (em100.fpga > 0x0033) { /* 0.51 */
