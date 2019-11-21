@@ -21,27 +21,38 @@
 
 #include "em100.h"
 
-/* file format:
+/* Firmware Update File Format
+ * ===========================
  *
- *  0x0000000: 65 6d 31 30 30 70 72 6f     - magic 8 bytes
- *  0x0000014: 32 2e 32 36                 - version MCU
- *  0x000001e: 30 2e 37 35                 - version FPGA
- *  0x0000028: 57 46 50 44                 - WFPD (??)
- *  0x0000038: 00 01 00 00                 - file offset FPGA
- *  0x000003c: 44 15 07 00                 - file length FPGA
- *  0x0000040: 00 17 07 00                 - file offset MCU
- *  0x0000044: 00 bf 00 00                 - file length MCU
+ *  0x0000000: 65 6d 31 30 30 70 72 6f     - magic           (20 bytes)
+ *  0x0000014: 32 2e 32 36                 - version MCU     (10 bytes)
+ *  0x000001e: 30 2e 37 35                 - version FPGA    (10 bytes)
+ *  0x0000028: 57 46 50 44                 - Rev / WFPD      (16 bytes)
+ *  0x0000038: 00 01 00 00                 - file offset FPGA (4 bytes)
+ *  0x000003c: 44 15 07 00                 - file length FPGA (4 bytes)
+ *  0x0000040: 00 17 07 00                 - file offset MCU  (4 bytes)
+ *  0x0000044: 00 bf 00 00                 - file length MCU  (4 bytes)
  *
- * flash layout
+ * EM100Pro / EM100Pro-G2 Flash Layout
+ * ===================================
+ *
  *  0x0000000: fpga firmware
  *  0x0100000: 256 bytes of 0x00 filled space
  *  0x0100100: mcu firmware
  *  0x01f0000: 4 bytes secret key, 00 padded
- *  0x01fff00: ff ff 4 bytes serial number ff padded
+ *  0x01fff00: ff xx yy yy yy yy ff ff
+ *    xx: HW version
+ *    yy: 4 bytes serial number
  *
- * - empty pages remain 0xff filled
- * - partially used pages are typically filled up with 00 bytes
- *   except the page containing the serial number
+ * Notes
+ * =====
+ *
+ *  - Empty pages remain 0xff filled.
+ *  - Partially used pages are typically filled up with 00 bytes
+ *    except the page containing the serial number.
+ *  - After a FPGA firmware update, the page at 0x0100000 needs to
+ *    be written with 0xaa 0x55 BOOT 0x55 0xaa to make the FPGA
+ *    slurp in the new firmware.
  */
 
 #undef DEBUG
