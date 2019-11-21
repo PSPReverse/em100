@@ -29,13 +29,14 @@ CFLAGS += -DXZ_USE_CRC64 -DXZ_DEC_ANY_CHECK -Ixz
 
 LDFLAGS ?=
 LDFLAGS += $(shell $(PKG_CONFIG) --libs libusb-1.0)
+LDFLAGS += $(shell $(PKG_CONFIG) --libs libcurl)
 
 CC ?= gcc
 PKG_CONFIG ?= pkg-config
 
 XZ = xz/xz_crc32.c  xz/xz_crc64.c  xz/xz_dec_bcj.c  xz/xz_dec_lzma2.c  xz/xz_dec_stream.c
 SOURCES = em100.c firmware.c fpga.c hexdump.c sdram.c spi.c system.c trace.c usb.c
-SOURCES += chips.c tar.c $(XZ)
+SOURCES += curl.c chips.c tar.c $(XZ)
 OBJECTS = $(SOURCES:.c=.o)
 
 all: dep em100

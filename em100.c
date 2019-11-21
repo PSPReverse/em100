@@ -756,6 +756,7 @@ static const struct option longopts[] = {
 	{"firmware-write", 1, 0, 'g'},
 	{"device", 1, 0, 'x'},
 	{"list-devices", 0, 0, 'l'},
+	{"update-files", 0, 0, 'U'},
 	{"terminal",0 ,0, 'T'},
 	{NULL, 0, 0, 0}
 };
@@ -784,6 +785,7 @@ static void usage(char *name)
 		"  -x|--device BUS:DEV             use EM100pro on USB bus/device\n"
 		"  -x|--device EMxxxxxx            use EM100pro with serial no EMxxxxxx\n"
 		"  -l|--list-devices               list all connected EM100pro devices\n"
+		"  -U|--update-files               update device (chip) and firmware database\n"
 		"  -D|--debug:                     print debug information.\n"
 		"  -h|--help:                      this help text\n\n",
 		name);
@@ -807,7 +809,7 @@ int main(int argc, char **argv)
 	unsigned int spi_start_address = 0;
 	const char *voltage = NULL;
 
-	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:V:p:Dx:lhT",
+	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:V:p:Dx:lUhT",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -874,6 +876,9 @@ int main(int argc, char **argv)
 			break;
 		case 'l':
 			em100_list();
+			return 0;
+		case 'U':
+			update_all_files();
 			return 0;
 		default:
 		case 'h':

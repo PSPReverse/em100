@@ -185,6 +185,10 @@ int tar_close(TFILE *tfile);
 int tar_ls(TFILE *tfile);
 int test_tar(void);
 
+/* Network */
+void download(const char *name, const char *id);
+int update_all_files(void);
+
 /* Misc. */
 
 #define MB * 1024 * 1024
