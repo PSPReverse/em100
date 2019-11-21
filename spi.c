@@ -258,6 +258,8 @@ int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout,
 				" be > 512\n");
 		return 0;
 	}
+	memcpy(data, blk, length);
+
 	memset(cmd, 0, 16);
 	cmd[0] = 0x52; /* write dFIFO */
 	cmd[1] = (length >> 8)  & 0xff;
