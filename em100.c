@@ -809,9 +809,13 @@ int main(int argc, char **argv)
 
 	printf("MCU version: %d.%02d\n", em100.mcu >> 8, em100.mcu & 0xff);
 	if (em100.fpga > 0x0033) { /* 0.51 */
-		printf("FPGA version: %d.%02d (%s)\n",
+		if (em100.hwversion == HWVERSION_EM100PRO)
+			printf("FPGA version: %d.%02d (%s)\n",
 				em100.fpga >> 8 & 0x7f, em100.fpga & 0xff,
 				em100.fpga & 0x8000 ? "1.8V" : "3.3V");
+		else /* EM100Pro-G2 */
+			printf("FPGA version: %d.%03d\n",
+				em100.fpga >> 8 & 0x7f, em100.fpga & 0xff);
 	} else {
 		/* While the Dediprog software for Windows will refuse to work
 		 * with 1.8V chips on older FPGA versions, it does not

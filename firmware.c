@@ -284,10 +284,16 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 
 	printf("EM100Pro%s Update File: %s\n",
 			em100->hwversion == HWVERSION_EM100PRO_G2 ? "-G2" : "", filename);
-	printf("  Installed version:  MCU %d.%d, FPGA %d.%d (%s)\n",
+	if (em100->hwversion == HWVERSION_EM100PRO)
+		printf("  Installed version:  MCU %d.%d, FPGA %d.%d (%s)\n",
 			em100->mcu >> 8, em100->mcu & 0xff,
 			em100->fpga >> 8 & 0x7f, em100->fpga & 0xff,
 			em100->fpga & 0x8000 ? "1.8V" : "3.3V");
+	else
+		printf("  Installed version:  MCU %d.%d, FPGA %d.%03d\n",
+			em100->mcu >> 8, em100->mcu & 0xff,
+			em100->fpga >> 8 & 0x7f, em100->fpga & 0xff);
+
 	printf("  New version:        MCU %s, FPGA %s\n",
 			mcu_version, fpga_version);
 
