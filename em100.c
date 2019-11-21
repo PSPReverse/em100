@@ -255,7 +255,7 @@ static int set_serialno(struct em100 *em100, unsigned int serialno)
 	/* Re-read serial number */
 	get_device_info(em100);
 	if (em100->serialno != 0xffffffff)
-		printf("New serial number: DP%06d\n", em100->serialno);
+		printf("New serial number: EM%06d\n", em100->serialno);
 	else
 		printf("New serial number: N.A.\n");
 
@@ -433,7 +433,7 @@ static int em100_attach(struct em100 *em100, int bus, int device,
 		if (bus && device)
 			printf("Could not find EM100pro at %03d:%03d.\n", bus, device);
 		else if (serial_number)
-			printf("Could not find EM100pro with serial number DP%06d.\n",
+			printf("Could not find EM100pro with serial number EM%06d.\n",
 					serial_number);
 		else
 			printf("Could not find EM100pro device.\n");
@@ -493,7 +493,7 @@ static int em100_list(void)
 					libusb_get_device_address(dev));
 			continue;
 		}
-		printf(" Bus %03d Device %03d: EM100pro DP%06d\n",
+		printf(" Bus %03d Device %03d: EM100pro EM%06d\n",
 				libusb_get_bus_number(dev),
 				libusb_get_device_address(dev),
 				em100.serialno);
@@ -679,7 +679,7 @@ static void usage(char *name)
 		"  -V|--set-voltage [1.8|3.3]      switch FPGA voltage\n"
 		"  -p|--holdpin [LOW|FLOAT|INPUT]: set the hold pin state\n"
 		"  -x|--device BUS:DEV             use EM100pro on USB bus/device\n"
-		"  -x|--device DPxxxxxx            use EM100pro with serial no DPxxxxxx\n"
+		"  -x|--device EMxxxxxx            use EM100pro with serial no EMxxxxxx\n"
 		"  -l|--list-devices               list all connected EM100pro devices\n"
 		"  -D|--debug:                     print debug information.\n"
 		"  -h|--help:                      this help text\n\n",
@@ -830,7 +830,7 @@ int main(int argc, char **argv)
 	printf("Hardware version: %u\n", em100.hwversion);
 
 	if (em100.serialno != 0xffffffff)
-		printf("Serial number: DP%06d\n", em100.serialno);
+		printf("Serial number: EM%06d\n", em100.serialno);
 	else
 		printf("Serial number: N.A.\n");
 	printf("SPI flash database: %s\n", VERSION);
@@ -857,6 +857,10 @@ int main(int argc, char **argv)
 		/* if the user specified a serial containing DP, skip that */
 		if ((serialno[0] == 'D' || serialno[0] == 'd') &&
 		    (serialno[1] == 'P' || serialno[1] == 'p'))
+			offset = 2;
+		/* if the user specified a serial containing EM, skip that */
+		if ((serialno[0] == 'E' || serialno[0] == 'e') &&
+		    (serialno[1] == 'M' || serialno[1] == 'm'))
 			offset = 2;
 
 		if (sscanf(serialno + offset, "%d", &serial_number) != 1)
