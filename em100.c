@@ -626,7 +626,7 @@ static int get_chip_type(struct em100 *em100, const chipdesc **out)
 		break;
 	}
 
-	if (!chip)
+	if (!chip->name)
 		return 1;
 
 	*out = chip;
