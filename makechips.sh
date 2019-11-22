@@ -53,8 +53,8 @@ fi
 echo "    Creating configs..."
 mkdir -p $WD/configs
 cp -a $TEMP/Program\ Files/DediProg/EM100/config/EM100Pro/*.cfg $WD/configs
-echo "${VERSION}" > $WD/configs/VERSION
-VERSION=${VERSION} $WD/makechips $WD/configs/*.cfg > $WD/em100pro_chips.h
+echo -n "${VERSION}" > $WD/configs/VERSION
+VERSION="${VERSION}" $WD/makechips $WD/configs/*.cfg > $WD/em100pro_chips.h
 
 echo "    Extract firmware files..."
 mkdir -p $WD/firmware
