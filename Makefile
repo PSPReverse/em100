@@ -23,23 +23,23 @@ ifneq ($(Q),)
 endif
 endif
 
-CFLAGS ?=-O2 -g -fomit-frame-pointer
+CFLAGS ?= -O2 -g -fomit-frame-pointer
 CFLAGS += $(shell $(PKG_CONFIG) --cflags libusb-1.0)
 
 CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wmissing-prototypes
 CFLAGS += -Wwrite-strings -Wredundant-decls -Wstrict-aliasing -Wshadow -Wextra
 CFLAGS += -Wno-unused-but-set-variable
 # Remove after fixing
-CFLAGS +=-Wno-sign-compare -Wno-discarded-qualifiers
+CFLAGS += -Wno-sign-compare -Wno-discarded-qualifiers
 
 LDFLAGS ?=
 LDFLAGS += $(shell $(PKG_CONFIG) --libs libusb-1.0)
 
-CC?=gcc
-PKG_CONFIG?=pkg-config
+CC ?= gcc
+PKG_CONFIG ?= pkg-config
 
-SOURCES=em100.c firmware.c fpga.c hexdump.c sdram.c spi.c system.c trace.c usb.c
-OBJECTS=$(SOURCES:.c=.o)
+SOURCES = em100.c firmware.c fpga.c hexdump.c sdram.c spi.c system.c trace.c usb.c
+OBJECTS = $(SOURCES:.c=.o)
 
 all: dep em100
 
