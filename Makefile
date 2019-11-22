@@ -50,28 +50,26 @@ em100: $(OBJECTS)
 	printf "  LD     em100\n"
 	$(CC) $(CFLAGS) -o $@ $(OBJECTS) $(LDFLAGS)
 
-em100pro_chips.h: makechips.sh
-	printf "  CREATE em100pro_chips.sh & firmware images\n"
-	LANG=C ./makechips.sh
-
 %: %.c
 	printf "  CC+LD  $@\n"
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $< $(LDFLAGS)
 
 %.o: %.c
 	printf "  CC     $@\n"
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
-dep: $(SOURCES) em100pro_chips.h
+dep: $(SOURCES)
 	$(CC) $(CFLAGS) -MM $(SOURCES) > .dependencies
 	#perl -pi -e 's,^xz,xz/xz,g' .dependencies
 
-makechips.sh: makedpfw makechips
+tarballs: makedpfw makechips.sh
+	printf "  CREATE config & firmware images\n"
+	LANG=C ./makechips.sh
 
 clean:
-	rm -f em100 makedpfw makechips
+	rm -f em100 makedpfw
 	rm -f $(OBJECTS)
-	rm -rf configs firmware
+	rm -rf configs{,.tar.xz} firmware{,.tar.xz}
 	rm -f .dependencies
 
 distclean: clean
@@ -79,4 +77,4 @@ distclean: clean
 
 -include .dependencies
 
-.PHONY: clean distclean
+.PHONY: clean distclean tarballs

@@ -31,6 +31,7 @@ fi
 FILE=EM100Pro.msi
 TEMP=$(mktemp -d /tmp/makech.XXXXXX)
 WD=$(readlink -f $(dirname $0))
+TD=$WD/em100_home
 
 cd $TEMP
 if [ -r $WD/$FILE ]; then
@@ -51,13 +52,12 @@ if ! msiextract $FILE > /dev/null ; then
 fi
 
 echo "    Creating configs..."
-mkdir -p $WD/configs
-cp -a $TEMP/Program\ Files/DediProg/EM100/config/EM100Pro/*.cfg $WD/configs
-echo -n "${VERSION}" > $WD/configs/VERSION
-VERSION="${VERSION}" $WD/makechips $WD/configs/*.cfg > $WD/em100pro_chips.h
+mkdir -p $TD/configs
+cp -a $TEMP/Program\ Files/DediProg/EM100/config/EM100Pro/*.cfg $TD/configs
+echo -n "${VERSION}" > $TD/configs/VERSION
 
 echo "    Extract firmware files..."
-mkdir -p $WD/firmware
+mkdir -p $TD/firmware
 for i in $TEMP/Program\ Files/DediProg/EM100/firmware/EM100ProFW_*
 do
   firmware=$( basename "$i" )
@@ -68,9 +68,16 @@ do
   fpga_version=${tuple: 4:1}.${tuple: 5:2}
 
   $WD/makedpfw -m "$i/2.bin" -M $mcu_version -f "$i/1.bin" -F $fpga_version \
-     -o $WD/firmware/em100pro_fw_${mcu_version}_${fpga_version}_${voltage}.dpfw
+     -o $TD/firmware/em100pro_fw_${mcu_version}_${fpga_version}_${voltage}.dpfw
 done
-echo "${VERSION}" > $WD/firmware/VERSION
+echo -n "${VERSION}" > $TD/firmware/VERSION
 
+cd $TD
+LANG=C tar cJf configs.tar.xz --sort=name configs
+LANG=C tar cJf firmware.tar.xz --sort=name firmware
+echo -n "Time: " > VERSION
+date +%s >> VERSION
+echo "Version: ${VERSION}" >> VERSION
 cd $WD
+
 rm -rf $TEMP
