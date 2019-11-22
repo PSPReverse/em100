@@ -24,7 +24,7 @@
 
 void hexdump(const void *memory, size_t length)
 {
-	int i;
+	size_t i;
 	uint8_t *m;
 	int all_zero = 0;
 	int all_one = 0;
@@ -32,7 +32,7 @@ void hexdump(const void *memory, size_t length)
 	m = (uint8_t *) memory;
 
 	for (i = 0; i < length; i += 16) {
-		int j;
+		size_t j;
 
 		all_zero++;
 		all_one++;
@@ -49,7 +49,7 @@ void hexdump(const void *memory, size_t length)
 			}
 		}
 		if (all_zero < 2 && all_one < 2) {
-			printf( "%08x:", i);
+			printf( "%08zx:", i);
 			for (j = 0; j < 16; j++)
 				printf( " %02x", m[i + j]);
 			printf("  ");

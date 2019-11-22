@@ -76,18 +76,18 @@ int poll_spi_flash_status(struct em100 *em100)
  * read_spi_flash_page: fetch SPI flash page
  * @param em100: initialized em100 device structure
  *
- * out(16 bytes): 0x33 addr addr addr .. 0
+ * out(16 bytes): 0x33 address address address .. 0
  * in(len + 255 bytes): 0xff ?? serno_lo serno_hi ?? ?? .. ??
  */
-int read_spi_flash_page(struct em100 *em100, int addr, unsigned char *blk)
+int read_spi_flash_page(struct em100 *em100, int address, unsigned char *blk)
 {
 	unsigned char cmd[16];
 	unsigned char data[256];
 	memset(cmd, 0, 16);
 	cmd[0] = 0x33; /* read SPI flash page */
-	cmd[1] = (addr >> 16) & 0xff;
-	cmd[2] = (addr >> 8)  & 0xff;
-	cmd[3] = addr & 0xff;
+	cmd[1] = (address >> 16) & 0xff;
+	cmd[2] = (address >> 8)  & 0xff;
+	cmd[3] = address & 0xff;
 	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
@@ -104,7 +104,7 @@ int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data)
 {
 	int length = 256;
 	int actual;
-	int bytes_sent=0;
+	int bytes_sent = 0;
 	int bytes_left;
 	unsigned char cmd[16];
 	memset(cmd, 0, 16);
@@ -244,11 +244,11 @@ int write_ht_register(struct em100 *em100, int reg, uint8_t val)
 	return 1;
 }
 
-int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout,
+int write_dfifo(struct em100 *em100, size_t length, unsigned int timeout,
 		unsigned char *blk)
 {
 	int actual;
-	int bytes_sent=0;
+	size_t bytes_sent = 0;
 	int bytes_left;
 	unsigned char cmd[16];
 	unsigned char data[512];
@@ -287,12 +287,12 @@ int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout,
 			break;
 		}
 
-		printf("Sent %d bytes of %d\n", bytes_sent, length);
+		printf("Sent %zd bytes of %zd\n", bytes_sent, length);
 	}
 
 	printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");
 	if (bytes_sent == length)
-		printf("Warning: Sent %d bytes, expected %d\n",
+		printf("Warning: Sent %zd bytes, expected %zd\n",
 				bytes_sent, length);
 
 	int len = get_response(em100->dev, data, 512);
@@ -303,7 +303,7 @@ int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout,
 	return 0;
 }
 
-int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout,
+int read_ufifo(struct em100 *em100, size_t length, unsigned int timeout,
 		unsigned char *blk)
 {
 	unsigned char cmd[16];
@@ -324,7 +324,7 @@ int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout,
 	if (!send_cmd(em100->dev, cmd)) {
 		return 0;
 	}
-	int len = get_response(em100->dev, data, 512);
+	size_t len = get_response(em100->dev, data, 512);
 
 	/* get second response from read ufifo command */
 	get_response(em100->dev, data2, 2);

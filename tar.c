@@ -48,7 +48,7 @@ typedef struct {
 
 static unsigned int checksum(tar_header_t *file)
 {
-	int i, chk_off = offsetof(tar_header_t, checksum);
+	size_t i, chk_off = offsetof(tar_header_t, checksum);
 	unsigned char *raw = (unsigned char *)file;
 	unsigned int chksum = 256;
 
@@ -104,7 +104,7 @@ int tar_ls(TFILE *tfile)
 	return 0;
 }
 
-TFILE *tar_find(TFILE *tfile, char *name, int casesensitive)
+TFILE *tar_find(TFILE *tfile, const char *name, int casesensitive)
 {
 	size_t i = 0;
 	TFILE *ret;

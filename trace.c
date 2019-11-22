@@ -107,7 +107,7 @@ static int read_report_buffer(struct em100 *em100,
 }
 
 struct spi_cmd_values {
-	char *cmd_name;
+	const char *cmd_name;
 	uint8_t cmd;
 	uint8_t uses_address;
 	uint8_t pad_bytes;

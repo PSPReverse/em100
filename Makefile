@@ -30,8 +30,6 @@ CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wmissing-prototypes
 CFLAGS += -Wwrite-strings -Wredundant-decls -Wstrict-aliasing -Wshadow -Wextra
 CFLAGS += -Wno-unused-but-set-variable
 CFLAGS += -DXZ_USE_CRC64 -DXZ_DEC_ANY_CHECK -Ixz
-# Remove after fixing
-CFLAGS += -Wno-sign-compare -Wno-discarded-qualifiers
 
 LDFLAGS ?=
 LDFLAGS += $(shell $(PKG_CONFIG) --libs libusb-1.0)

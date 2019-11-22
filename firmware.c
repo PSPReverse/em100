@@ -90,8 +90,8 @@ int firmware_dump(struct em100 *em100, const char *filename,
 		int firmware_is_dpfw)
 {
 	unsigned char *data;
-	int i;
-	uint32_t id, rom_size = 0;
+	size_t i, rom_size = 0;
+	uint32_t id;
 	FILE *fw;
 
 	id = get_spi_flash_id(em100);
@@ -117,7 +117,7 @@ int firmware_dump(struct em100 *em100, const char *filename,
 		if (!read_spi_flash_page(em100, i, data+i)) {
 			if (!read_spi_flash_page(em100, i, data+i))
 				if (!read_spi_flash_page(em100, i, data+i))
-					printf("\nERROR: Couldn't read @%08x\n",
+					printf("\nERROR: Couldn't read @%08zx\n",
 							i);
 		}
 	}

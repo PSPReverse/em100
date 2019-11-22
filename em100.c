@@ -72,7 +72,7 @@ static void get_current_state(struct em100 *em100)
 		printf("EM100Pro state unknown\n");
 }
 
-static char * get_pin_string(int pin) {
+static const char *get_pin_string(int pin) {
 	switch (pin) {
 	case 0:
 		return ("low");
@@ -352,7 +352,7 @@ static int em100_init(struct em100 *em100, libusb_context *ctx,
 }
 
 static int em100_attach(struct em100 *em100, int bus, int device,
-		int serial_number)
+		uint32_t serial_number)
 {
 	libusb_device_handle *dev = NULL;
 	libusb_context *ctx = NULL;
@@ -731,7 +731,7 @@ static char *get_em100_home(void)
 	return directory;
 }
 
-char *get_em100_file(char *name)
+char *get_em100_file(const char *name)
 {
 	char file[FILENAME_BUFFER_SIZE];
 	strncpy(file, get_em100_home(), FILENAME_BUFFER_SIZE);
@@ -805,7 +805,7 @@ int main(int argc, char **argv)
 	int firmware_is_dpfw = 0;
 	unsigned int serial_number = 0;
 	unsigned long address_offset = 0;
-	unsigned long spi_start_address = 0;
+	unsigned int spi_start_address = 0;
 	const char *voltage = NULL;
 
 	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:V:p:Dx:lhT",
@@ -819,8 +819,8 @@ int main(int argc, char **argv)
 			/* TODO: check that file exists */
 			break;
 		case 'a':
-			sscanf(optarg, "%lx", &spi_start_address);
-			printf("Spi address: 0x%08lx\n", spi_start_address);
+			sscanf(optarg, "%x", &spi_start_address);
+			printf("SPI address: 0x%08x\n", spi_start_address);
 			break;
 		case 'u':
 			read_filename = optarg;
@@ -1026,7 +1026,7 @@ int main(int argc, char **argv)
 	}
 
 	if (filename) {
-		int maxlen = desiredchip ? chip->size : 0x4000000; /* largest size - 64MB */
+		unsigned int maxlen = desiredchip ? chip->size : 0x4000000; /* largest size - 64MB */
 		void *data = malloc(maxlen);
 		int done;
 		void *readback = NULL;
@@ -1042,7 +1042,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		int length = 0;
+		unsigned int length = 0;
 		while ((!feof(fdata)) && (length < maxlen)) {
 			int blocksize = 65536;
 			length += blocksize * fread(data+length, blocksize, 1,

@@ -189,7 +189,7 @@ static int parse_and_output_config(struct dediprog_cfg_pro *cfg, chipdesc *chip)
 	return entries;
 }
 
-static int parse_and_output_sfdp(chipdesc *chip, void **ptr, int *length, int entries)
+static int parse_and_output_sfdp(chipdesc *chip, void **ptr, size_t *length, int entries)
 {
 	int i, len = 0;
 	unsigned char *sfdp_buffer = (unsigned char *)*ptr;
@@ -220,7 +220,7 @@ static int parse_and_output_sfdp(chipdesc *chip, void **ptr, int *length, int en
 	return len;
 }
 
-static int parse_and_output_srst(chipdesc *chip, void **ptr, int *length, int entries)
+static int parse_and_output_srst(chipdesc *chip, void **ptr, size_t *length, int entries)
 {
 	int i, len = 0;
 	uint32_t magic;
@@ -279,7 +279,7 @@ int parse_dcfg(chipdesc *chip, TFILE *dcfg)
 	uint32_t magic;
 
 	void *ptr = (void *)dcfg->address;
-	int length = dcfg->length;
+	size_t length = dcfg->length;
 
 	if (length < sizeof(cfg_buffer)) {
 		/* Not a config file */

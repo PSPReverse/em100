@@ -82,15 +82,15 @@ int write_sdram(struct em100 *em100, unsigned char *data, int address,
 uint32_t get_spi_flash_id(struct em100 *em100);
 int erase_spi_flash(struct em100 *em100);
 int poll_spi_flash_status(struct em100 *em100);
-int read_spi_flash_page(struct em100 *em100, int addr, unsigned char *blk);
+int read_spi_flash_page(struct em100 *em100, int address, unsigned char *blk);
 int write_spi_flash_page(struct em100 *em100, int address, unsigned char *data);
 int unlock_spi_flash(struct em100 *em100);
 int erase_spi_flash_sector(struct em100 *em100, unsigned int sector);
 int read_ht_register(struct em100 *em100, int reg, uint8_t *val);
 int write_ht_register(struct em100 *em100, int reg, uint8_t val);
-int write_dfifo(struct em100 *em100, unsigned int length, unsigned int timeout,
+int write_dfifo(struct em100 *em100, size_t length, unsigned int timeout,
 		unsigned char *blk);
-int read_ufifo(struct em100 *em100, unsigned int length, unsigned int timeout,
+int read_ufifo(struct em100 *em100, size_t length, unsigned int timeout,
 		unsigned char *blk);
 
 /* system.c */
@@ -181,7 +181,7 @@ typedef struct {
 	size_t length;
 	int alloc;
 } TFILE;
-TFILE *tar_find(TFILE *tfile, char *name, int casesensitive);
+TFILE *tar_find(TFILE *tfile, const char *name, int casesensitive);
 TFILE *tar_load_compressed(char *filename);
 int tar_for_each(TFILE *tfile, int (*run)(char *, TFILE *, void *, int), void *data);
 int tar_close(TFILE *tfile);
@@ -192,7 +192,7 @@ int test_tar(void);
 
 #define MB * 1024 * 1024
 #define FILENAME_BUFFER_SIZE 1024
-char *get_em100_file(char *name);
+char *get_em100_file(const char *name);
 
 /* Chips */
 int parse_dcfg(chipdesc *chip, TFILE *dcfg);
