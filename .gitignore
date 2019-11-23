@@ -4,5 +4,6 @@
 /makechips
 /makedpfw
 /EM100Pro.msi
+/*.dpfw
 .dependencies
 *.o
