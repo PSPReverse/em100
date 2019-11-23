@@ -62,7 +62,7 @@ static const struct option longopts[] = {
 static void usage(char *name)
 {
 	printf("makedpfw: EM100pro firmware update maker\n\nExample:\n"
-		"  %s -m 1.bin -M 2.27 -f 2.bin -F 0.85 -o \n"
+		"  %s -m 2.bin -M 2.27 -f 1.bin -F 0.85 -o \n"
 		"\nUsage:\n"
 		"  -m|--mcu-file <file>            MCU firmware file name\n"
 		"  -M|--mcu-version <version>      MCU firmware version\n"
