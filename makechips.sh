@@ -17,7 +17,7 @@
 #
 
 URL="https://www.dediprog.com/download/save/78.msi"
-VURL="https://www.dediprog.com/download?productCategory=SPI+Flash+Solution&productName=EM100Pro-G2+SPI+Flash+Emulator&fileType=10"
+VURL="https://www.dediprog.com/download?productCategory=SPI+Flash+Solution&productName=EM100Pro-G2+SPI+NOR+Flash+Emulator&fileType=10"
 
 if ! which curl > /dev/null; then
   echo "Install curl to run this script."
