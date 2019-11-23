@@ -51,7 +51,7 @@ static void write32(void *a, uint32_t d)
 static const struct option longopts[] = {
 	{"debug", 0, 0, 'D'},
 	{"help", 0, 0, 'h'},
-	{"trace", 0, 0, 't'},
+	{"output", 1, 0, 'o'},
 	{"mcu-file", 1, 0, 'm'},
 	{"mcu-version", 1, 0, 'M'},
 	{"fpga-file", 1, 0, 'f'},
