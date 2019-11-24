@@ -790,7 +790,6 @@ static void usage(char *name)
 		name);
 }
 
-/* get MCU and FPGA version, *100 encoded */
 int main(int argc, char **argv)
 {
 	int opt, idx;
@@ -893,16 +892,9 @@ int main(int argc, char **argv)
 	if (desiredchip && !chip)
 		return 1;
 
-	printf("MCU version: %d.%02d\n", em100.mcu >> 8, em100.mcu & 0xff);
-	if (em100.fpga > 0x0033) { /* 0.51 */
-		if (em100.hwversion == HWVERSION_EM100PRO)
-			printf("FPGA version: %d.%02d (%s)\n",
-				em100.fpga >> 8 & 0x7f, em100.fpga & 0xff,
-				em100.fpga & 0x8000 ? "1.8V" : "3.3V");
-		else /* EM100Pro-G2 */
-			printf("FPGA version: %d.%03d\n",
-				em100.fpga >> 8 & 0x7f, em100.fpga & 0xff);
-	} else {
+
+	if (em100.hwversion == HWVERSION_EM100PRO) {
+		printf("MCU version: %d.%02d\n", em100.mcu >> 8, em100.mcu & 0xff);
 		/* While the Dediprog software for Windows will refuse to work
 		 * with 1.8V chips on older FPGA versions, it does not
 		 * specifically output a voltage when reporting the FPGA
@@ -910,9 +902,19 @@ int main(int argc, char **argv)
 		 * known to behave the old way, 0.75 is behaving the new
 		 * way.
 		 */
-		printf("FPGA version: %d.%02d\n", em100.fpga >> 8,
+		if (em100.fpga > 0x0033) /* 0.51 */
+			printf("FPGA version: %d.%02d (%s)\n",
+				em100.fpga >> 8 & 0x7f, em100.fpga & 0xff,
+				em100.fpga & 0x8000 ? "1.8V" : "3.3V");
+		else
+			printf("FPGA version: %d.%02d\n", em100.fpga >> 8,
 				em100.fpga & 0xff);
+	} else {/* EM100Pro-G2 */
+		printf("MCU version: %d.%d\n", em100.mcu >> 8, em100.mcu & 0xff);
+		printf("FPGA version: %d.%03d\n",
+			em100.fpga >> 8 & 0x7f, em100.fpga & 0xff);
 	}
+
 	printf("Hardware version: %u\n", em100.hwversion);
 
 	if (em100.serialno != 0xffffffff)
