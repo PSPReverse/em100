@@ -208,14 +208,45 @@ int firmware_dump(struct em100 *em100, const char *filename,
 	return 0;
 }
 
+typedef struct {
+	TFILE *autoupdate_file;
+	struct em100 *em100;
+} firmware_update_t;
+
+static int firmware_update_entry(char *name, TFILE *file, void *data, int ok __unused)
+{
+	firmware_update_t *update = (firmware_update_t *)data;
+
+	/* firmware files are sorted oldest to newest */
+	/* filenames look like firmware/em100pro_fw_2.27_0.89_3.3V.dpfw */
+	if (update->em100->hwversion == HWVERSION_EM100PRO_EARLY ||
+			update->em100->hwversion == HWVERSION_EM100PRO) {
+#define FIRMWARE_PATH "firmware/em100pro_fw_"
+		if (strncmp(name, FIRMWARE_PATH, strlen(FIRMWARE_PATH)))
+			return 0;
+		/* The last file that matches is therefore the newest */
+
+		if ((update->em100->fpga & 0x8000 &&
+			strstr(name, "1.8V")) || strstr(name, "3.3V")) {
+			update->autoupdate_file=file;
+			printf("select %s\n", name);
+		}
+		return 0;
+	}
+
+	/* hwversion 6 */
+	printf("EM100Pro-G2 currently does not support auto-updating firmware.\n");
+
+	return 1;
+}
+
 int firmware_update(struct em100 *em100, const char *filename, int verify)
 {
 #define MAX_VERSION_LENGTH 10
 	unsigned char page[256], vpage[256];
-	FILE *f;
 	long fsize;
 	unsigned char *fw;
-	int i;
+	int i, automatic = 0;
 	int fpga_offset, fpga_len, mcu_offset, mcu_len;
 	char fpga_version[MAX_VERSION_LENGTH + 1],
 	     mcu_version[MAX_VERSION_LENGTH + 1];
@@ -234,36 +265,59 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 		exit(1);
 	}
 
-	printf("\nAttempting firmware update with file %s\n", filename);
+	if (!strncasecmp(filename, "auto", 5)) {
+		printf("\nAutomatic firmware update.\n");
+		TFILE *f = tar_load_compressed(get_em100_file("firmware.tar.xz"));
+		firmware_update_t data;
+		data.em100 = em100;
+		data.autoupdate_file = NULL;
+		tar_for_each(f, firmware_update_entry, (void *)&data);
+		if (data.autoupdate_file == NULL) {
+			printf("Could not find suitable firmware for autoupdate\n");
+			return 0;
+		}
+		fsize = data.autoupdate_file->length;
+		fw = malloc(fsize);
+		if (!fw) {
+			printf("ERROR: out of memory.\n");
+			return 0;
+		}
+		memcpy(fw, data.autoupdate_file->address, fsize);
+		automatic = 1;
+	} else {
+		FILE *f;
 
-	f = fopen(filename, "rb");
-	if (!f) {
-		perror(filename);
-		return 0;
-	}
+		printf("\nFirmware update with file %s\n", filename);
 
-	fseek(f, 0, SEEK_END);
-	fsize = ftell(f);
-	if (fsize < 0) {
-		perror(filename);
-		fclose(f);
-		return 0;
-	}
-	fseek(f, 0, SEEK_SET);
+		f = fopen(filename, "rb");
+		if (!f) {
+			perror(filename);
+			return 0;
+		}
 
-	fw = malloc(fsize);
-	if (!fw) {
-		printf("ERROR: out of memory.\n");
+		fseek(f, 0, SEEK_END);
+		fsize = ftell(f);
+		if (fsize < 0) {
+			perror(filename);
+			fclose(f);
+			return 0;
+		}
+		fseek(f, 0, SEEK_SET);
+
+		fw = malloc(fsize);
+		if (!fw) {
+			printf("ERROR: out of memory.\n");
+			fclose(f);
+			return 0;
+		}
+		if (fread(fw, fsize, 1, f) != 1) {
+			perror(filename);
+			fclose(f);
+			free(fw);
+			return 0;
+		}
 		fclose(f);
-		return 0;
 	}
-	if (fread(fw, fsize, 1, f) != 1) {
-		perror(filename);
-		fclose(f);
-		free(fw);
-		return 0;
-	}
-	fclose(f);
 
 	if (em100->hwversion == HWVERSION_EM100PRO_EARLY && (memcmp(fw, "em100pro", 8) != 0 ||
 			memcmp(fw + 0x28, "WFPD", 4) != 0)) {

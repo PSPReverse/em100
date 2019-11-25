@@ -784,7 +784,7 @@ static void usage(char *name)
 		"  -t|--trace:                     trace mode\n"
 		"  -O|--offset HEX_VAL:            address offset for trace mode\n"
 		"  -T|--terminal:                  terminal mode\n"
-		"  -F|--firmware-update FILE:      update EM100pro firmware (dangerous)\n"
+		"  -F|--firmware-update FILE|auto: update EM100pro firmware (dangerous)\n"
 		"  -f|--firmware-dump FILE:        export raw EM100pro firmware to file\n"
 		"  -g|--firmware-write FILE:       export EM100pro firmware to DPFW file\n"
 		"  -S|--set-serialno NUM:          set serial number to NUM\n"
