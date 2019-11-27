@@ -193,9 +193,13 @@ int update_all_files(void);
 
 #define MB * 1024 * 1024
 #define FILENAME_BUFFER_SIZE 1024
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 char *get_em100_file(const char *name);
 
 /* Chips */
 int parse_dcfg(chipdesc *chip, TFILE *dcfg);
+
+/* Images */
+int autocorrect_image(struct em100 *em100, char *image, size_t size);
 
 #endif

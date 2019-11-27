@@ -764,7 +764,8 @@ static const struct option longopts[] = {
 	{"device", 1, 0, 'x'},
 	{"list-devices", 0, 0, 'l'},
 	{"update-files", 0, 0, 'U'},
-	{"terminal",0 ,0, 'T'},
+	{"terminal", 0, 0, 'T'},
+	{"compatible", 0, 0, 'C'},
 	{NULL, 0, 0, 0}
 };
 
@@ -793,6 +794,7 @@ static void usage(char *name)
 		"  -x|--device EMxxxxxx            use EM100pro with serial no EMxxxxxx\n"
 		"  -l|--list-devices               list all connected EM100pro devices\n"
 		"  -U|--update-files               update device (chip) and firmware database\n"
+		"  -C|--compatible                 enable compatibility mode (patch image for EM100Pro)\n"
 		"  -D|--debug:                     print debug information.\n"
 		"  -h|--help:                      this help text\n\n",
 		name);
@@ -808,7 +810,7 @@ int main(int argc, char **argv)
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
 	int verify = 0, trace = 0, terminal=0;
-	int debug = 0;
+	int debug = 0, compatibility = 0;
 	int bus = 0, device = 0;
 	int firmware_is_dpfw = 0;
 	unsigned int serial_number = 0;
@@ -816,7 +818,7 @@ int main(int argc, char **argv)
 	unsigned int spi_start_address = 0;
 	const char *voltage = NULL;
 
-	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:V:p:Dx:lUhT",
+	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:V:p:DCx:lUhT",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -887,6 +889,9 @@ int main(int argc, char **argv)
 		case 'U':
 			update_all_files();
 			return 0;
+		case 'C':
+			compatibility = 1;
+			break;
 		default:
 		case 'h':
 			usage(argv[0]);
@@ -1080,6 +1085,9 @@ int main(int argc, char **argv)
 			free(data);
 			return 1;
 		}
+
+		if (compatibility)
+			autocorrect_image(&em100, data, length);
 
 		if (spi_start_address) {
 			readback = malloc(maxlen);
