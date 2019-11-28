@@ -39,8 +39,9 @@ typedef struct {
 } chipdesc;
 
 /* Hardware versions */
-#define HWVERSION_EM100PRO    4
-#define HWVERSION_EM100PRO_G2 6
+#define HWVERSION_EM100PRO_EARLY 0xff
+#define HWVERSION_EM100PRO       0x04
+#define HWVERSION_EM100PRO_G2    0x06
 
 #define BULK_SEND_TIMEOUT	5000	/* sentinel value */
 

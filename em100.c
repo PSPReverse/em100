@@ -256,7 +256,9 @@ static int set_serialno(struct em100 *em100, unsigned int serialno)
 	/* Re-read serial number */
 	get_device_info(em100);
 	if (em100->serialno != 0xffffffff)
-		printf("New serial number: EM%06d\n", em100->serialno);
+		printf("New serial number: %s%06d\n",
+				em100->hwversion == HWVERSION_EM100PRO_EARLY ? "DP" : "EM",
+				em100->serialno);
 	else
 		printf("New serial number: N.A.\n");
 
@@ -494,9 +496,10 @@ static int em100_list(void)
 					libusb_get_device_address(dev));
 			continue;
 		}
-		printf(" Bus %03d Device %03d: EM100pro EM%06d\n",
+		printf(" Bus %03d Device %03d: EM100pro %s%06d\n",
 				libusb_get_bus_number(dev),
 				libusb_get_device_address(dev),
+				em100.hwversion == HWVERSION_EM100PRO_EARLY ? "DP" : "EM",
 				em100.serialno);
 		em100_detach(&em100);
 		count++;
@@ -889,7 +892,7 @@ int main(int argc, char **argv)
 		return 1;
 
 
-	if (em100.hwversion == HWVERSION_EM100PRO) {
+	if (em100.hwversion == HWVERSION_EM100PRO || em100.hwversion == HWVERSION_EM100PRO_EARLY) {
 		printf("MCU version: %d.%02d\n", em100.mcu >> 8, em100.mcu & 0xff);
 		/* While the Dediprog software for Windows will refuse to work
 		 * with 1.8V chips on older FPGA versions, it does not
@@ -914,7 +917,8 @@ int main(int argc, char **argv)
 	printf("Hardware version: %u\n", em100.hwversion);
 
 	if (em100.serialno != 0xffffffff)
-		printf("Serial number: EM%06d\n", em100.serialno);
+		printf("Serial number: %s%06d\n",
+				em100.hwversion == HWVERSION_EM100PRO_EARLY ? "DP" : "EM", em100.serialno);
 	else
 		printf("Serial number: N.A.\n");
 	printf("SPI flash database: %s\n", database_version);

@@ -37,7 +37,7 @@
  *  0x0100100: mcu firmware
  *  0x01f0000: 4 bytes secret key, 00 padded
  *  0x01fff00: ff xx yy yy yy yy ff ff
- *    xx: HW version
+ *    xx: HW version (0xff, 0x04, 0x06)
  *    yy: 4 bytes serial number
  *
  * Notes
@@ -133,6 +133,7 @@ int firmware_dump(struct em100 *em100, const char *filename,
 		unsigned char header[0x100];
 
 		switch (em100->hwversion) {
+		case HWVERSION_EM100PRO_EARLY:
 		case HWVERSION_EM100PRO:
 			hdrversion=1;
 			break;
@@ -220,6 +221,7 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 	     mcu_version[MAX_VERSION_LENGTH + 1];
 
 	switch (em100->hwversion) {
+	case HWVERSION_EM100PRO_EARLY:
 	case HWVERSION_EM100PRO:
 		printf("Detected EM100Pro (original).\n");
 		break;
@@ -262,6 +264,13 @@ int firmware_update(struct em100 *em100, const char *filename, int verify)
 		return 0;
 	}
 	fclose(f);
+
+	if (em100->hwversion == HWVERSION_EM100PRO_EARLY && (memcmp(fw, "em100pro", 8) != 0 ||
+			memcmp(fw + 0x28, "WFPD", 4) != 0)) {
+		printf("ERROR: Not an EM100Pro (original) firmware file.\n");
+		free(fw);
+		return 0;
+	}
 
 	if (em100->hwversion == HWVERSION_EM100PRO && (memcmp(fw, "em100pro", 8) != 0 ||
 			memcmp(fw + 0x28, "WFPD", 4) != 0)) {
