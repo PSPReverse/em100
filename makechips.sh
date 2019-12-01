@@ -30,7 +30,7 @@ fi
 
 FILE=EM100Pro.msi
 TEMP=$(mktemp -d /tmp/makech.XXXXXX)
-WD=$(readlink -f $(dirname $0))
+WD=$(cd "$(dirname `eval echo "$0"`)"; pwd)
 TD=$WD/em100_home
 
 cd $TEMP
