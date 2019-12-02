@@ -733,6 +733,7 @@ static char *get_em100_home(void)
 		return NULL;
 	}
 
+	closedir(dir);
 	return directory;
 }
 
