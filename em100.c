@@ -666,7 +666,9 @@ static int list_chips_entry(char *name __unused, TFILE *file, void *data __unuse
 static chipdesc *setup_chips(const char *desiredchip)
 {
 	static chipdesc chip;
-	configs = tar_load_compressed(get_em100_file("configs.tar.xz"));
+	char *configs_name = get_em100_file("configs.tar.xz");
+	configs = tar_load_compressed(configs_name);
+	free(configs_name);
 	if (!configs) {
 		printf("Can't find chip configs in $EM100_HOME/configs.tar.xz.\n");
 		return NULL;
