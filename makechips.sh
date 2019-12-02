@@ -38,14 +38,13 @@ else
   curl -s $URL -o $FILE || exit
 fi
 echo "    Unpacking ..."
-VERSION="$( curl -s "$VURL" | grep -A2 EM100Pro-G2\ Soft|tail -1| cut -d\< -f1 | tr -d ' 	')"
-echo "    Detected SPI flash database \"$VERSION\""
-
 if ! msiextract $FILE > /dev/null ; then
   echo "    Could not unpack Windows installer..."
   rm -rf $TEMP
   exit 1
 fi
+VERSION="$( strings -e l Program\ Files/DediProg/EM100/EM100.exe | grep -A1 ProductVersion | grep EM100 )"
+echo "    Detected SPI flash database \"$VERSION\""
 
 echo "    Creating configs..."
 mkdir -p $TD/configs
