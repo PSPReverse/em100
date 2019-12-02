@@ -147,7 +147,7 @@ int update_all_files(void)
 		goto download_all;
 	}
 
-	if (fscanf(old, "Time: %ld\nVersion: %s\n",
+	if (fscanf(old, "Time: %ld\nVersion: %255s\n",
 			        &old_time, old_version) != 2)
 		printf("Parse error in %s.\n", my_version_name);
 
@@ -164,7 +164,7 @@ int update_all_files(void)
 		free(tmp_version);
 		return 1;
 	}
-	if (fscanf(new, "Time: %ld\nVersion: %s\n",
+	if (fscanf(new, "Time: %ld\nVersion: %255s\n",
 				&new_time, new_version) != 2)
 		printf("Parse error in upstream VERSION.\n");
 	fclose(new);
