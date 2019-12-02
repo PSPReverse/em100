@@ -722,7 +722,11 @@ static char *get_em100_home(void)
 	if (dir) {
 		// success
 	} else if (errno == ENOENT) {
-		mkdir(directory, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+		if (mkdir(directory, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+			perror(directory);
+			directory[0]=0;
+			return NULL;
+		}
 	} else {
 		perror("EM100_HOME inaccessible");
 		directory[0]=0;
