@@ -734,7 +734,7 @@ static char *get_em100_home(void)
 
 char *get_em100_file(const char *name)
 {
-	char file[FILENAME_BUFFER_SIZE];
+	char file[FILENAME_BUFFER_SIZE + 1];
 	strncpy(file, get_em100_home(), FILENAME_BUFFER_SIZE);
 	strncat(file, name, FILENAME_BUFFER_SIZE - strlen(file) - 1);
 	return strdup(file);
