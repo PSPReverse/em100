@@ -720,7 +720,8 @@ static char *get_em100_home(void)
 
 	DIR *dir = opendir(directory);
 	if (dir) {
-		// success
+		/* success */
+		closedir(dir);
 	} else if (errno == ENOENT) {
 		if (mkdir(directory, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
 			perror(directory);
@@ -733,7 +734,6 @@ static char *get_em100_home(void)
 		return NULL;
 	}
 
-	closedir(dir);
 	return directory;
 }
 
