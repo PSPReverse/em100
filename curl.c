@@ -110,6 +110,9 @@ static int curl_get(const char *id, const char *filename, int progress)
 
 	/* Fetch the file */
 	res = curl_easy_perform(curl);
+	if (res != CURLE_OK)
+		printf("Error while downloading %s: %s\n", filename,
+				curl_easy_strerror(res));
 
 	/* Close file */
 	fclose(file);
@@ -117,7 +120,7 @@ static int curl_get(const char *id, const char *filename, int progress)
 	/* Clean up */
 	curl_easy_cleanup(curl);
 
-	return 0;
+	return (res == CURLE_OK) ? 0 : -1;
 }
 
 void download(const char *name, const char *id)
