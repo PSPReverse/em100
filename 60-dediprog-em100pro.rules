@@ -1,0 +1,2 @@
+# drop this in /etc/udev/rules.d
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="04b4", ATTRS{idProduct}=="1235", MODE="664", GROUP="plugdev"
