@@ -133,26 +133,20 @@ void download(const char *name, const char *id)
 
 int update_all_files(void)
 {
-	long old_time, new_time;
+	long old_time = 0, new_time = 0;
 	char old_version[256] = "<unknown>", new_version[256] = "<unknown>";
 
 	/* Read existing version and timestamp */
 	char *my_version_name = get_em100_file(version_name);
 	FILE *old = fopen(my_version_name, "r");
-	if (!old) {
-		free(my_version_name);
-		/* We probably don't have any files yet. Try to
-		 * download everything.
-		 */
-		goto download_all;
+	if (old) {
+		if (fscanf(old, "Time: %ld\nVersion: %255s\n",
+				        &old_time, old_version) != 2)
+			printf("Parse error in %s.\n", my_version_name);
+		fclose(old);
 	}
 
-	if (fscanf(old, "Time: %ld\nVersion: %255s\n",
-			        &old_time, old_version) != 2)
-		printf("Parse error in %s.\n", my_version_name);
-
 	free(my_version_name);
-	fclose(old);
 
 	/* Read upstream version and timestamp */
 	char *tmp_version = get_em100_file(".VERSION.new");
@@ -177,9 +171,11 @@ int update_all_files(void)
 		return 0;
 	}
 
-download_all:
 	/* Download everything */
-	printf("Update available: %s (installed: %s)\n", new_version, old_version);
+	if (old_time == 0)
+		printf("Downloading latest version: %s\n", new_version);
+	else
+		printf("Update available: %s (installed: %s)\n", new_version, old_version);
 	download(version_name, version_id);
 	download(configs_name, configs_id);
 	download(firmware_name, firmware_id);
