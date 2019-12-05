@@ -50,7 +50,7 @@ static unsigned char cmdid = 0xff; // timestamp, so never a valid command id
 #define REPORT_BUFFER_LENGTH	8192
 #define REPORT_BUFFER_COUNT	8
 
-static int read_report_buffer(struct em100 *em100, 
+static int read_report_buffer(struct em100 *em100,
 	unsigned char reportdata[REPORT_BUFFER_COUNT][REPORT_BUFFER_LENGTH])
 {
 	unsigned char cmd[16] = {0};
@@ -59,7 +59,7 @@ static int read_report_buffer(struct em100 *em100,
 
 	cmd[0] = 0xbc; /* read SPI trace buffer*/
 
-	/* 
+	/*
 	 * Trace length, unit is 4k according to specs
 	 *
 	 * cmd1..cmd4 are probably u32BE on how many
@@ -128,7 +128,8 @@ struct spi_cmd_values spi_command_list[] = {
 		{"unknown command",		0xff,	0,	0}
 };
 
-static struct spi_cmd_values * get_command_vals(uint8_t command) {
+static struct spi_cmd_values * get_command_vals(uint8_t command)
+{
 	/* cache last command so a search isn't needed every time */
 	static struct spi_cmd_values *spi_cmd = &spi_command_list[3]; /* init to read */
 	int i;
@@ -265,7 +266,8 @@ int read_spi_trace(struct em100 *em100, int display_terminal,
  * Multiple messages can be in a single uFIFO transfer, so loop through
  * the data looking for the signature.
  */
-int read_spi_terminal(struct em100 *em100, int show_counter) {
+int read_spi_terminal(struct em100 *em100, int show_counter)
+{
 	unsigned char data[UFIFO_SIZE] = { 0 };
 	static unsigned int msg_counter = 1; /* Number of messages */
 	uint16_t data_length;
