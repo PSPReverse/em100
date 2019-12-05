@@ -54,8 +54,9 @@ em100: $(OBJECTS)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
 
 dep: $(SOURCES)
-	$(CC) $(CFLAGS) -MM $(SOURCES) > .dependencies
-	#perl -pi -e 's,^xz,xz/xz,g' .dependencies
+	$(CC) $(CFLAGS) -MM $(SOURCES) > .dependencies.tmp
+	sed -i 's,^xz,xz/xz,g' .dependencies.tmp
+	mv .dependencies.tmp .dependencies
 
 tarballs: makedpfw makechips.sh
 	printf "  CREATE config & firmware images\n"
