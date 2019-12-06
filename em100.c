@@ -27,6 +27,7 @@
 
 TFILE *configs;
 char *database_version;
+int debug = 0;
 
 volatile int do_exit_flag = 0;
 
@@ -810,7 +811,7 @@ int main(int argc, char **argv)
 	const char *holdpin = NULL;
 	int do_start = 0, do_stop = 0;
 	int verify = 0, trace = 0, terminal=0;
-	int debug = 0, compatibility = 0;
+	int compatibility = 0;
 	int bus = 0, device = 0;
 	int firmware_is_dpfw = 0;
 	unsigned int serial_number = 0;

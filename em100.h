@@ -195,6 +195,7 @@ int update_all_files(void);
 #define FILENAME_BUFFER_SIZE 1024
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 char *get_em100_file(const char *name);
+extern int debug;
 
 /* Chips */
 int parse_dcfg(chipdesc *chip, TFILE *dcfg);
