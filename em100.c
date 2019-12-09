@@ -878,8 +878,10 @@ int main(int argc, char **argv)
 			firmware_is_dpfw = 1;
 			break;
 		case 'x':
-			if ((optarg[0] == 'D' || optarg[0] == 'd') &&
-				(optarg[1] == 'P' || optarg[1] == 'p'))
+			if (((optarg[0] == 'D' || optarg[0] == 'd') &&
+				(optarg[1] == 'P' || optarg[1] == 'p')) ||
+				((optarg[0] == 'E' || optarg[0] == 'e') &&
+				(optarg[1] == 'M' || optarg[1] == 'm')))
 				sscanf(optarg + 2, "%d", &serial_number);
 			else
 				sscanf(optarg, "%d:%d", &bus, &device);
