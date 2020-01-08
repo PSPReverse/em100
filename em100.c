@@ -671,7 +671,8 @@ static chipdesc *setup_chips(const char *desiredchip)
 	configs = tar_load_compressed(configs_name);
 	free(configs_name);
 	if (!configs) {
-		printf("Can't find chip configs in $EM100_HOME/configs.tar.xz.\n");
+		printf("Can't find chip configs in $EM100_HOME/configs.tar.xz.\n"
+				"Please run: em100 --update-files.\n");
 		return NULL;
 	}
 
