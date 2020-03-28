@@ -36,7 +36,7 @@ PKG_CONFIG ?= pkg-config
 
 XZ = xz/xz_crc32.c  xz/xz_crc64.c  xz/xz_dec_bcj.c  xz/xz_dec_lzma2.c  xz/xz_dec_stream.c
 SOURCES = em100.c firmware.c fpga.c hexdump.c sdram.c spi.c system.c trace.c usb.c
-SOURCES += image.c curl.c chips.c tar.c $(XZ)
+SOURCES += image.c curl.c chips.c tar.c net.c $(XZ)
 OBJECTS = $(SOURCES:.c=.o)
 
 all: dep em100

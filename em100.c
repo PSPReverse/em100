@@ -768,6 +768,7 @@ static const struct option longopts[] = {
 	{"update-files", 0, 0, 'U'},
 	{"terminal", 0, 0, 'T'},
 	{"compatible", 0, 0, 'C'},
+	{"network", 0, 0, 'n'},
 	{NULL, 0, 0, 0}
 };
 
@@ -797,6 +798,7 @@ static void usage(char *name)
 		"  -l|--list-devices               list all connected EM100pro devices\n"
 		"  -U|--update-files               update device (chip) and firmware database\n"
 		"  -C|--compatible                 enable compatibility mode (patch image for EM100Pro)\n"
+		"  -n|--network [PORT]             Enables networking mode where read/write requests can be send over the network\n"
 		"  -D|--debug:                     print debug information.\n"
 		"  -h|--help:                      this help text\n\n",
 		name);
@@ -819,8 +821,9 @@ int main(int argc, char **argv)
 	unsigned long address_offset = 0;
 	unsigned int spi_start_address = 0;
 	const char *voltage = NULL;
+	unsigned int port = 0;
 
-	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:V:p:DCx:lUhT",
+	while ((opt = getopt_long(argc, argv, "c:d:a:u:rsvtO:F:f:g:S:V:p:DCx:n:lUhT",
 				  longopts, &idx)) != -1) {
 		switch (opt) {
 		case 'c':
@@ -895,6 +898,9 @@ int main(int argc, char **argv)
 			return 0;
 		case 'C':
 			compatibility = 1;
+			break;
+		case 'n':
+			sscanf(optarg, "%u", &port);
 			break;
 		default:
 		case 'h':
@@ -1133,6 +1139,9 @@ int main(int argc, char **argv)
 	if (do_start) {
 		set_state(&em100, 1);
 	}
+
+	if (port)
+		return network_mainloop(&em100, port);
 
 	if (trace || terminal) {
 		struct sigaction signal_action;

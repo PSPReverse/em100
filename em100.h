@@ -203,4 +203,7 @@ int parse_dcfg(chipdesc *chip, TFILE *dcfg);
 /* Images */
 int autocorrect_image(struct em100 *em100, char *image, size_t size);
 
+/* Networked read/write */
+int network_mainloop(struct em100 *em100, int port);
+
 #endif
