@@ -86,14 +86,16 @@ static int network_io_loop(struct em100 *em100, int iFdCon)
                 /* Send response and optional data. */
                 int32_t rcResp = rcReq == 1 ? 0 : -1;
                 ssize_t cbSend = send(iFdCon, &rcResp, sizeof(rcResp), 0);
-                if (   cbSend == sizeof(rcResp)
-                    && Req.u32Cmd == 0
-                    && rcResp == 0)
+                if (cbSend == sizeof(rcResp))
                 {
-                    /* Send payload on successful read. */
-                    cbSend = send(iFdCon, pvScratch, Req.cbXfer, 0);
-                    if (cbSend != Req.cbXfer)
-                        rc = -1;
+                    if (   Req.u32Cmd == 0
+                        && rcResp == 0)
+                    {
+                        /* Send payload on successful read. */
+                        cbSend = send(iFdCon, pvScratch, Req.cbXfer, 0);
+                        if (cbSend != Req.cbXfer)
+                            rc = -1;
+                    }
                 }
                 else
                     rc = -1;
