@@ -1052,9 +1052,11 @@ int main(int argc, char **argv)
 		}
 	}
 
+    void *data = NULL;
+    unsigned int maxlen = 0;
 	if (filename) {
-		unsigned int maxlen = desiredchip ? chip->size : 0x4000000; /* largest size - 64MB */
-		void *data = malloc(maxlen);
+		maxlen = desiredchip ? chip->size : 0x4000000; /* largest size - 64MB */
+		data = malloc(maxlen);
 		int done;
 		void *readback = NULL;
 
@@ -1133,15 +1135,12 @@ int main(int argc, char **argv)
 			free(readback);
 		}
 
-		free(data);
+		/*free(data);*/
 	}
 
 	if (do_start) {
 		set_state(&em100, 1);
 	}
-
-	if (port)
-		return network_mainloop(&em100, port);
 
 	if (trace || terminal) {
 		struct sigaction signal_action;
@@ -1161,34 +1160,37 @@ int main(int argc, char **argv)
 			printf("trace%s", terminal ? " & " : "");
 		}
 
-		if (terminal) {
-			init_spi_terminal(&em100);
-			printf("terminal");
-		}
+        if (port)
+	        network_mainloop(&em100, port, data, maxlen);
 
-		printf(". Press CTL-C to exit.\n\n");
-		signal_action.sa_handler = exit_handler;
-		signal_action.sa_flags = 0;
-		sigemptyset(&signal_action.sa_mask);
-		sigaction(SIGINT, &signal_action, NULL);
+	    if (terminal) {
+		    init_spi_terminal(&em100);
+		    printf("terminal");
+	    }
 
-		while (!do_exit_flag) {
-			if (trace)
-				read_spi_trace(&em100, terminal,
-						address_offset);
-			else
-				read_spi_terminal(&em100, 0);
-		}
+	    printf(". Press CTL-C to exit.\n\n");
+	    signal_action.sa_handler = exit_handler;
+	    signal_action.sa_flags = 0;
+	    sigemptyset(&signal_action.sa_mask);
+	    sigaction(SIGINT, &signal_action, NULL);
 
-		if (!do_start && !do_stop)
-			set_state(&em100, 0);
-		if (trace)
-			reset_spi_trace(&em100);
+	    while (!do_exit_flag) {
+		    if (trace)
+			    read_spi_trace(&em100, terminal,
+					    address_offset);
+		    else
+			    read_spi_terminal(&em100, 0);
+	    }
 
-		if ((holdpin == NULL) && (!set_hold_pin_state(&em100, 2))) {
-			printf("Error: Failed to set EM100 to float\n");
-			return 1;
-		}
+	    if (!do_start && !do_stop)
+		    set_state(&em100, 0);
+	    if (trace)
+		    reset_spi_trace(&em100);
+
+	    if ((holdpin == NULL) && (!set_hold_pin_state(&em100, 2))) {
+		    printf("Error: Failed to set EM100 to float\n");
+		    return 1;
+	    }
 	}
 
 	return em100_detach(&em100);
