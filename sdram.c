@@ -60,7 +60,7 @@ int read_sdram(struct em100 *em100, void *data, int address, int length)
 			break;
 		}
 
-		printf("Read %d bytes of %d\n", bytes_read, length);
+		/*printf("Read %d bytes of %d\n", bytes_read, length);*/
 	}
 
 	return (bytes_read == length);
@@ -109,9 +109,9 @@ int write_sdram(struct em100 *em100, unsigned char *data, int address,
 			break;
 		}
 
-		printf("Sent %d bytes of %d\n", bytes_sent, length);
+		/*printf("Sent %d bytes of %d\n", bytes_sent, length);*/
 	}
 
-	printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");
+	/*printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");*/
 	return (bytes_sent == length);
 }
