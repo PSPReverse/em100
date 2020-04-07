@@ -166,11 +166,19 @@ typedef enum {
 	ht_lookup_table      = 0x07
 } ht_msg_type_t;
 
+struct spi_cmd_values {
+	const char *cmd_name;
+	uint8_t cmd;
+	uint8_t uses_address;
+	uint8_t pad_bytes;
+};
+
 int reset_spi_trace(struct em100 *em100);
 int read_spi_trace(struct em100 *em100, int display_terminal,
 		   unsigned long addr_offset);
 int read_spi_terminal(struct em100 *em100, int print_counter);
 int init_spi_terminal(struct em100 *em100);
+struct spi_cmd_values * get_command_vals(uint8_t command);
 
 /* Archive handling */
 typedef struct {
@@ -204,6 +212,6 @@ int parse_dcfg(chipdesc *chip, TFILE *dcfg);
 int autocorrect_image(struct em100 *em100, char *image, size_t size);
 
 /* Networked read/write */
-int network_mainloop(struct em100 *em100, int port);
+int network_mainloop(struct em100 *em100, int port, void *pvBin, size_t cbBin);
 
 #endif

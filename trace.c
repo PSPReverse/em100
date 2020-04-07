@@ -102,14 +102,7 @@ static int read_report_buffer(struct em100 *em100,
 	return 1;
 }
 
-struct spi_cmd_values {
-	const char *cmd_name;
-	uint8_t cmd;
-	uint8_t uses_address;
-	uint8_t pad_bytes;
-};
-
-struct spi_cmd_values spi_command_list[] = {
+static struct spi_cmd_values spi_command_list[] = {
 		/* name				cmd,	addr,	pad */
 		{"write status register",	0x01,	0,	0},
 		{"page program",		0x02,	1,	0},
@@ -128,7 +121,7 @@ struct spi_cmd_values spi_command_list[] = {
 		{"unknown command",		0xff,	0,	0}
 };
 
-static struct spi_cmd_values * get_command_vals(uint8_t command)
+struct spi_cmd_values * get_command_vals(uint8_t command)
 {
 	/* cache last command so a search isn't needed every time */
 	static struct spi_cmd_values *spi_cmd = &spi_command_list[3]; /* init to read */
@@ -166,9 +159,9 @@ int read_spi_trace(struct em100 *em100, int display_terminal,
 	for (report = 0; report < REPORT_BUFFER_COUNT; report++) {
 		data = &reportdata[report][0];
 		count = (data[0] << 8) | data[1];
-		if (count > 1022) {
-			printf("Warning: EM100pro sends too much data.\n");
-			count = 1022;
+		if (count > 1023) {
+			printf("Warning: EM100pro sends too much data %u.\n", count);
+			count = 1023;
 		}
 		for (i = 0; i < count; i++) {
 			unsigned int j = additional_pad_bytes;
