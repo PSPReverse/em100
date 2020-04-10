@@ -390,6 +390,8 @@ static int spi_cached_writes_process(EM100NET *pThis)
                         /* Move the data to the front. */
                         memmove(&pThis->abRecv[0], &pThis->abRecv[cbRead], pThis->offRecv - cbRead);
                         pThis->offRecv -= cbRead;
+                        if (!pThis->offRecv) /* Reset data available flag?. */
+                            write_sdram(pThis->pEm100, (unsigned char *)&pThis->offRecv, SPI_MSG_CHAN_AVAIL_F_OFF, sizeof(pThis->offRecv));
                     }
                     else
                     {
