@@ -75,15 +75,22 @@ typedef struct EM100NET
     uint8_t                 abRecv[256];
     /** Where we are in the buffer. */
     size_t                  offRecv;
+    /** Set to true when EM100NET::offRecv changed from a 0 value. */
+    uint8_t                 fNewDataAvailable;
 } EM100NET;
 
-#define SPI_MSG_CHAN_HDR_OFF   0xaab000
-#define SPI_MSG_CHAN_AVAIL_OFF   0xaaa000
+#define SPI_MSG_CHAN_HDR_OFF            0xaab000
+#define SPI_MSG_CHAN_AVAIL_OFF          0xaaa000
+#define SPI_MSG_CHAN_AVAIL_F_OFF        0xaac000
+#define SPI_MSG_CHAN_AVAIL_MAGIC        0x19640522 /* (Dan Brown) */
+
 #define SPI_FLASH_LOCK_OFF              0xaa0000
 #define SPI_FLASH_LOCK_UNLOCK_REQ_MAGIC 0x19570528 /* (Frank Schaetzing) */
 #define SPI_FLASH_LOCK_UNLOCKED_MAGIC   0x18280208 /* (Jules Verne) */
 #define SPI_FLASH_LOCK_LOCK_REQ_MAGIC   0x19380110 /* (Donald E Knuth) */
 #define SPI_FLASH_LOCK_LOCKED_MAGIC     0x18990223 /* (Erich Kaestner) */
+
+
 
 static int set_state(struct em100 *em100, int run)
 {
@@ -422,9 +429,18 @@ static int spi_cached_writes_process(EM100NET *pThis)
     }
 
     if (   !pThis->fSpiFlashLocked
-        && pThis->pProgHead)
+        && (   pThis->pProgHead
+            || pThis->fNewDataAvailable))
     {
         set_state(pThis->pEm100, 0);
+
+        if (pThis->fNewDataAvailable)
+        {
+            /* Just write the flag here. */
+            uint32_t u32Magic = SPI_MSG_CHAN_AVAIL_MAGIC;
+            write_sdram(pThis->pEm100, (unsigned char *)&u32Magic, SPI_MSG_CHAN_AVAIL_F_OFF, sizeof(u32Magic));
+            pThis->fNewDataAvailable = 0;
+        }
 
         /* Walk the list until we reach a lock request. */
         PSPIPROGREQ pReq = pThis->pProgHead;
@@ -475,6 +491,8 @@ static int spi_cached_writes_process(EM100NET *pThis)
                         /* Move the data to the front. */
                         memmove(&pThis->abRecv[0], &pThis->abRecv[cbRead], pThis->offRecv - cbRead);
                         pThis->offRecv -= cbRead;
+                        if (!pThis->offRecv) /* Reset data available flag?. */
+                            write_sdram(pThis->pEm100, (unsigned char *)&pThis->offRecv, SPI_MSG_CHAN_AVAIL_F_OFF, sizeof(pThis->offRecv));
                     }
                     else
                     {
@@ -552,6 +570,10 @@ static int network_io_loop(EM100NET *pThis)
             ssize_t cbRecv = recv(pThis->iFdSock, &pThis->abRecv[pThis->offRecv], cbAvail, MSG_DONTWAIT);
             if (cbRecv != (ssize_t)cbAvail)
                 return -1;
+
+            if (!pThis->offRecv)
+                pThis->fNewDataAvailable = 1;
+
             pThis->offRecv += cbAvail;
         }
 
