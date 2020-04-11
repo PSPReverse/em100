@@ -82,6 +82,7 @@ typedef struct EM100NET
 #define SPI_MSG_CHAN_HDR_OFF            0xaab000
 #define SPI_MSG_CHAN_AVAIL_OFF          0xaaa000
 #define SPI_MSG_CHAN_AVAIL_F_OFF        0xaac000
+#define SPI_MSG_CHAN_STS_OFF            0xaad000
 #define SPI_MSG_CHAN_AVAIL_MAGIC        0x19640522 /* (Dan Brown) */
 
 #define SPI_FLASH_LOCK_OFF              0xaa0000
@@ -203,27 +204,96 @@ static int spi_trace_process(EM100NET *pThis)
                 /* Check if there is a previous write pending and add a new cached write. */
                 if (pThis->fFlashProg)
                 {
-                    PSPIPROGREQ pProgReq = (PSPIPROGREQ)calloc(1, sizeof(SPIPROGREQ) + pThis->cbFlashProg);
-                    if (pProgReq)
+                    if (pThis->offFlashProg == SPI_MSG_CHAN_STS_OFF)
                     {
-                        pProgReq->pNext   = NULL;
-                        pProgReq->offProg = pThis->offFlashProg;
-                        pProgReq->cbProg  = pThis->cbFlashProg;
-                        memcpy(&pProgReq->abData[0], pThis->pvFlashProgData, pProgReq->cbProg);
+                        uint32_t uVal = *(uint32_t *)pThis->pvFlashProgData;
+                        printf("Status port: %#x\n", uVal);
+                        fflush(stdout);
+                        if (uVal == SPI_FLASH_LOCK_LOCK_REQ_MAGIC)
+                        {
+                            /*
+                             * XXX:Looks like something is hung, clear the lock status and inject a
+                             *     new lock request to workaround it for now (looks like a bug in the
+                             *     flash emulator maybe).
+                             */
+                            pThis->fSpiFlashLocked = 0;
+                            PSPIPROGREQ pProgReq = (PSPIPROGREQ)calloc(1, sizeof(SPIPROGREQ) + sizeof(uint32_t));
+                            if (pProgReq)
+                            {
+                                pProgReq->pNext   = NULL;
+                                pProgReq->offProg = SPI_FLASH_LOCK_OFF;
+                                pProgReq->cbProg  = sizeof(uint32_t);
+                                *(uint32_t *)&pProgReq->abData[0] = SPI_FLASH_LOCK_LOCK_REQ_MAGIC;
 
-                        if (!pThis->pProgHead)
-                        {
-                            pThis->pProgHead = pProgReq;
-                            pThis->pProgTail = pProgReq;
+                                if (!pThis->pProgHead)
+                                {
+                                    pThis->pProgHead = pProgReq;
+                                    pThis->pProgTail = pProgReq;
+                                }
+                                else
+                                {
+                                    pThis->pProgTail->pNext = pProgReq;
+                                    pThis->pProgTail        = pProgReq;
+                                }
+                            }
+                            else
+                                return 0;
                         }
-                        else
+                        else if (uVal == SPI_FLASH_LOCK_UNLOCK_REQ_MAGIC)
                         {
-                            pThis->pProgTail->pNext = pProgReq;
-                            pThis->pProgTail        = pProgReq;
+                            /*
+                             * XXX:Looks like something is hung, clear the lock status and inject a
+                             *     new lock request to workaround it for now (looks like a bug in the
+                             *     flash emulator maybe).
+                             */
+                            pThis->fSpiFlashLocked = 1;
+                            PSPIPROGREQ pProgReq = (PSPIPROGREQ)calloc(1, sizeof(SPIPROGREQ) + sizeof(uint32_t));
+                            if (pProgReq)
+                            {
+                                pProgReq->pNext   = NULL;
+                                pProgReq->offProg = SPI_FLASH_LOCK_OFF;
+                                pProgReq->cbProg  = sizeof(uint32_t);
+                                *(uint32_t *)&pProgReq->abData[0] = SPI_FLASH_LOCK_UNLOCK_REQ_MAGIC;
+
+                                if (!pThis->pProgHead)
+                                {
+                                    pThis->pProgHead = pProgReq;
+                                    pThis->pProgTail = pProgReq;
+                                }
+                                else
+                                {
+                                    pThis->pProgTail->pNext = pProgReq;
+                                    pThis->pProgTail        = pProgReq;
+                                }
+                            }
+                            else
+                                return 0;
                         }
                     }
                     else
-                        return 0;
+                    {
+                        PSPIPROGREQ pProgReq = (PSPIPROGREQ)calloc(1, sizeof(SPIPROGREQ) + pThis->cbFlashProg);
+                        if (pProgReq)
+                        {
+                            pProgReq->pNext   = NULL;
+                            pProgReq->offProg = pThis->offFlashProg;
+                            pProgReq->cbProg  = pThis->cbFlashProg;
+                            memcpy(&pProgReq->abData[0], pThis->pvFlashProgData, pProgReq->cbProg);
+
+                            if (!pThis->pProgHead)
+                            {
+                                pThis->pProgHead = pProgReq;
+                                pThis->pProgTail = pProgReq;
+                            }
+                            else
+                            {
+                                pThis->pProgTail->pNext = pProgReq;
+                                pThis->pProgTail        = pProgReq;
+                            }
+                        }
+                        else
+                            return 0;
+                    }
                 }
 
                 if (spi_command == 0x2) /* page program */
@@ -327,6 +397,8 @@ static int spi_trace_process(EM100NET *pThis)
 
 static int spi_cached_writes_process(EM100NET *pThis)
 {
+    uint8_t fFlashEmuHalted = 0;
+
     /*
      * If the flash is locked we have to look for an unlock request first to check whether we can
      * update the flash.
@@ -346,6 +418,7 @@ static int spi_cached_writes_process(EM100NET *pThis)
 
         /* Update everything up to and including the unlock request. */
         set_state(pThis->pEm100, 0);
+        fFlashEmuHalted = 1;
         PSPIPROGREQ pReq = pThis->pProgHead;
 
         for (;;)
@@ -426,15 +499,17 @@ static int spi_cached_writes_process(EM100NET *pThis)
                 break;
             }
         }
-
-        set_state(pThis->pEm100, 1); /* Start emulation again. */
     }
 
     if (   !pThis->fSpiFlashLocked
         && (   pThis->pProgHead
             || pThis->fNewDataAvailable))
     {
-        set_state(pThis->pEm100, 0);
+        if (!fFlashEmuHalted)
+        {
+            set_state(pThis->pEm100, 0);
+            fFlashEmuHalted = 1;
+        }
 
         if (pThis->fNewDataAvailable)
         {
@@ -537,10 +612,10 @@ static int spi_cached_writes_process(EM100NET *pThis)
                 break;
             }
         }
-
-        set_state(pThis->pEm100, 1); /* Start emulation again. */
     }
 
+    if (fFlashEmuHalted)
+        set_state(pThis->pEm100, 1); /* Start emulation again. */
     return 0;
 }
 
