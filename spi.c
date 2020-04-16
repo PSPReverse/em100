@@ -287,13 +287,13 @@ int write_dfifo(struct em100 *em100, size_t length, unsigned int timeout,
 	}
 
 	printf ("Transfer %s\n",bytes_sent == length ? "Succeeded" : "Failed");
-	if (bytes_sent == length)
+	if (bytes_sent != length)
 		printf("Warning: Sent %zd bytes, expected %zd\n",
 				bytes_sent, length);
 
 	int len = get_response(em100->dev, data, 512);
 
-	if (len == 1 && data[0] == length) {
+	if (len == 2 && (((size_t)data[0] << 8) | data[1]) == length) {
 		return 1;
 	}
 	return 0;
