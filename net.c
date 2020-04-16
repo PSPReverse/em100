@@ -443,12 +443,26 @@ static int spi_cached_writes_process(EM100NET *pThis)
             else if (   pReq->offProg >= SPI_MSG_CHAN_HDR_OFF
                      && pReq->offProg < SPI_MSG_CHAN_HDR_OFF + 4096)
             {
-                /* Send the data out over the socket. */
-                ssize_t cbSent = send(pThis->iFdSock, &pReq->abData[0], pReq->cbProg, 0);
-                if (cbSent != (ssize_t)pReq->cbProg)
+                if (pReq->cbProg > 4)
                 {
-                    printf("07\n");
-                    return -1;
+                    /* Number of valid bytes is prependend. */
+                    uint8_t cbValid = pReq->abData[1];
+                    ssize_t cbSent = send(pThis->iFdSock, &pReq->abData[1], cbValid, 0);
+                    if (cbSent != (ssize_t)cbValid)
+                    {
+                        printf("07\n");
+                        return -1;
+                    }
+                }
+                else
+                {
+                    /* Send the data out over the socket. */
+                    ssize_t cbSent = send(pThis->iFdSock, &pReq->abData[0], pReq->cbProg, 0);
+                    if (cbSent != (ssize_t)pReq->cbProg)
+                    {
+                        printf("07\n");
+                        return -1;
+                    }
                 }
             }
             else if (pReq->offProg == SPI_MSG_CHAN_AVAIL_OFF)
@@ -660,10 +674,116 @@ static int network_io_loop(EM100NET *pThis)
 }
 
 
+#define UFIFO_SIZE        512
+#define UFIFO_TIMEOUT    0x00
+#define FIFO_CHUNK_SZ      64
+static int network_io_loop_terminal(EM100NET *pThis)
+{
+    int rc = 0;
+    uint8_t abFifo[UFIFO_SIZE] = { 0 };
+    uint8_t fCanWriteToDFifo = 1;
+
+    do
+    {
+        int rcEm = read_ufifo(pThis->pEm100, UFIFO_SIZE, UFIFO_TIMEOUT, &abFifo[0]);
+        if (rcEm == 1)
+        {
+            /* Do we have data available? */
+            size_t cbData = ((size_t)abFifo[0] << 8) + abFifo[1];
+            uint8_t *pbBuf = &abFifo[2];
+
+            while (cbData)
+            {
+                if (*pbBuf == 0xdf)
+                {
+                    printf("Can write dFIFO again\n");
+                    /* Marker that the PSP read all data in the dFIFO and we can write to it again. */
+                    fCanWriteToDFifo = 1;
+                    pbBuf++;
+                    cbData--;
+                }
+                else if (*pbBuf == 0xef)
+                {
+                    pbBuf++;
+                    cbData--;
+                    uint8_t cbSend = *pbBuf;
+                    pbBuf++;
+                    cbData--;
+
+                    /* Send the data out over the socket. */
+                    ssize_t cbSent = send(pThis->iFdSock, pbBuf, cbSend, 0);
+                    if (cbSent != (ssize_t)cbSend)
+                    {
+                        printf("Error sending data\n");
+                        rc = -1;
+                        break;
+                    }
+                    pbBuf += cbSend;
+                    cbData -= cbSend;
+                }
+                else
+                {
+                    printf("Invalid marker byte %#x\n", *pbBuf);
+                    rc = -1;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            rc = -1;
+            break;
+        }
+
+        if (fCanWriteToDFifo)
+        {
+            /* Check for data on the socket. */
+            int cbAvail = 0;
+            rc = ioctl(pThis->iFdSock, FIONREAD, &cbAvail);
+            if (rc)
+                return -1;
+
+            if (cbAvail)
+            {
+                /*
+                 * Write next chunk but only up to the maximum allowed size.
+                 * The PSP SPI can only handle 71bytes in one transactions
+                 * and the EM100 erases the dFIFO after each read no matter how
+                 * many bytes were transfered.
+                 */
+                cbAvail = cbAvail < FIFO_CHUNK_SZ ? cbAvail : FIFO_CHUNK_SZ;
+                printf("Sending %u bytes of data to dFIFO\n", cbAvail);
+                ssize_t cbRecv = recv(pThis->iFdSock, &abFifo[0], cbAvail, MSG_DONTWAIT);
+                if (cbRecv != (ssize_t)cbAvail)
+                {
+                    printf("Error receiving data\n");
+                    rc = -1;
+                    break;
+                }
+
+                rcEm = write_dfifo(pThis->pEm100, cbAvail, 100, &abFifo[0]);
+                if (rcEm == 0)
+                {
+                    rc = -1;
+                    break;
+                }
+
+                fCanWriteToDFifo = 0;
+            }
+        }
+
+    } while (!rc);
+
+    return rc;
+}
+
+
 int network_mainloop(struct em100 *em100, int port, void *pvBin, size_t cbBin)
 {
     int rc = 0;
     int iFdListening = socket(AF_INET, SOCK_STREAM, 0);
+
+    init_spi_terminal(em100);
 
     if (iFdListening > -1)
     {
@@ -702,6 +822,7 @@ int network_mainloop(struct em100 *em100, int port, void *pvBin, size_t cbBin)
                     This.cbFlashProgAlloc = 0;
                     This.offRecv          = 0;
 
+#if 0
                     /* Initialize the lock state. */
                     uint32_t uMagic = SPI_FLASH_LOCK_UNLOCKED_MAGIC;
                     *(uint32_t *)(((uint8_t *)pvBin) + SPI_FLASH_LOCK_OFF) = SPI_FLASH_LOCK_UNLOCKED_MAGIC;
@@ -710,6 +831,9 @@ int network_mainloop(struct em100 *em100, int port, void *pvBin, size_t cbBin)
                     set_state(This.pEm100, 1);
 
                     rc = network_io_loop(&This);
+#else
+                    rc = network_io_loop_terminal(&This);
+#endif
                     if (rc < 0)
                     {
                         printf("EM100: Network I/O loop failed\n");
