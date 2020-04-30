@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <netdb.h>
 
 #include <poll.h>
@@ -696,7 +697,7 @@ static int network_io_loop_terminal(EM100NET *pThis)
             {
                 if (*pbBuf == 0xdf)
                 {
-                    printf("Can write dFIFO again\n");
+                    /*printf("Can write dFIFO again\n");*/
                     /* Marker that the PSP read all data in the dFIFO and we can write to it again. */
                     fCanWriteToDFifo = 1;
                     pbBuf++;
@@ -752,7 +753,7 @@ static int network_io_loop_terminal(EM100NET *pThis)
                  * many bytes were transfered.
                  */
                 cbAvail = cbAvail < FIFO_CHUNK_SZ ? cbAvail : FIFO_CHUNK_SZ;
-                printf("Sending %u bytes of data to dFIFO\n", cbAvail);
+                /*printf("Sending %u bytes of data to dFIFO\n", cbAvail);*/
                 ssize_t cbRecv = recv(pThis->iFdSock, &abFifo[0], cbAvail, MSG_DONTWAIT);
                 if (cbRecv != (ssize_t)cbAvail)
                 {
@@ -805,6 +806,11 @@ int network_mainloop(struct em100 *em100, int port, void *pvBin, size_t cbBin)
                     rc = 1;
                 else
                 {
+                    int fNoDelay = 1;
+                    rcPsx = setsockopt(iFdCon, IPPROTO_TCP, TCP_NODELAY, &fNoDelay, sizeof(int));
+                    if (rcPsx)
+                        printf("EM100: Disbaling nagle failed with %d\n", errno);
+
                     printf("EM100: Connected, entering I/O loop\n");
                     EM100NET This;
 
